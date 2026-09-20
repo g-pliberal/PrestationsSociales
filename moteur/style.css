@@ -1,0 +1,1820 @@
+/* ---------------------------------------------------------------------------
+   COPIE. Cette feuille est reprise telle quelle du dépôt
+   g-pliberal/retraitecomptenotionelle (moteur/style.css), où elle est extraite
+   de `src/retraite_notionnelle/web/gabarit.py`. Elle n'est pas modifiée ici :
+   c'est ce qui fait que les deux sites du parti sont une seule affiche, et
+   qu'une correction faite là-bas se reporte ici par une simple recopie.
+
+   Le commentaire d'origine suit. Il parle du simulateur de retraite et de son
+   hébergement sous /retraite/ : ces phrases-là ne valent pas pour ce site-ci,
+   tout le reste vaut.
+
+   Ce site n'emploie qu'une partie du vocabulaire décrit ci-dessous — les
+   classes des graphiques, des cartes à publier et du relevé de carrière n'y
+   servent pas. Elles sont conservées pour que la recopie reste littérale.
+   --------------------------------------------------------------------------- */
+
+/* Extrait de src/retraite_notionnelle/web/gabarit.py par
+   scripts/construire_donnees.py — ne pas modifier ici. */
+/* La page est un outil du site partiliberalfrancais.fr, servi sous /retraite/.
+   Elle ne charge rien de ce site — ni feuille, ni police, ni script — et ne lui
+   ressemble plus : c'est une RUPTURE assumée, décidée en septembre 2026. Le
+   site parent est bleu-vert clair et sage ; celui-ci est une affiche politique
+   — fond vert profond, titres massifs en capitales, or pour ce qui compte,
+   crème pour ce qu'on doit lire de près. La raison est dans ce que la page
+   doit faire : un programme se retient, et un tableau de bord ne se retient
+   pas. Les variables ci-dessous sont le seul point de contact : un hôte qui
+   voudrait ajuster une couleur les redéfinit dans une feuille chargée après
+   celle-ci, et n'a besoin de connaître ni un sélecteur, ni un fichier. Leurs
+   noms sont donc stables, et ceux d'avant la refonte ont été conservés même
+   quand leur valeur a changé du tout au tout. */
+
+/* Les deux polices de l'affiche, servies par le dépôt et non par un tiers.
+   Les charger chez Google aurait coûté la seule promesse que cette page fait
+   à qui la remplit — « tout se calcule dans votre navigateur, rien n'est
+   envoyé » —, puisqu'une requête de police emporte l'adresse IP du lecteur.
+   Elles sont donc dans `moteur/polices/`, sous licence OFL, avec les deux
+   sous-ensembles dont le français a besoin : `latin` pour l'essentiel,
+   `latin-ext` pour les œ, les ÿ et les guillemets qu'il traîne. Voir
+   `moteur/polices/README.md`.
+
+   `font-display: swap` : le texte s'affiche tout de suite dans la pile du
+   système, et se recompose quand la police arrive. Un titre invisible pendant
+   trois secondes sur un réseau lent serait pire que le même titre dans une
+   autre police. */
+@font-face {
+  font-family: "Public Sans"; font-style: normal; font-weight: 100 900;
+  font-display: swap; src: url(polices/public-sans-latin.woff2) format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Public Sans"; font-style: normal; font-weight: 100 900;
+  font-display: swap; src: url(polices/public-sans-latin-ext.woff2) format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Instrument Serif"; font-style: normal; font-weight: 400;
+  font-display: swap; src: url(polices/instrument-serif-latin.woff2) format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Instrument Serif"; font-style: normal; font-weight: 400;
+  font-display: swap; src: url(polices/instrument-serif-latin-ext.woff2) format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+:root {
+  /* Un seul thème, et c'est voulu. L'affiche EST l'identité : la décliner en
+     clair donnerait deux sites qui ne disent pas la même chose, et le vert
+     profond n'est pas un habit de nuit qu'on quitte le matin. `color-scheme`
+     est donc figé sur `dark`, ce qui donne aussi aux champs, aux menus
+     déroulants et aux barres de défilement du navigateur le rendu sombre qui
+     va avec — sans quoi un `<select>` s'ouvrirait en blanc au milieu. */
+  color-scheme: dark;
+  /* Le vert profond de l'affiche, et le ton juste au-dessus qui sert à
+     détacher un bloc sans introduire de couleur. */
+  --fond: #0b3d3a;
+  --fond-carte: #0f4a46;
+  --fond-appui: #0f4a46;
+  /* Le fond sur lequel un tableau défile : le voile qui cache l'ombre de
+     défilement en bout de course doit être de cette couleur-là, et chaque
+     carte le redéfinit à la sienne (voir `.defilant`). */
+  --fond-defilant: var(--fond);
+  /* Le crème porte 12,9:1 sur le fond, et le crème atténué 7,1:1 : au-dessus
+     du plancher de 4,5:1 même pour le petit texte, ce que la relecture
+     d'accessibilité de septembre 2026 exigeait explicitement. */
+  --texte: #f4efe4;
+  --texte-doux: #c3d8d4;
+  /* Une troisième teinte, pour les légendes et les réserves — 5,4:1, réservée
+     aux textes d'au moins 15 px. */
+  --texte-tres-doux: #a7c3bf;
+  --trait: #2f6360;
+  /* Bordure des CHAMPS, distincte du filet décoratif : un contour de champ est
+     ce qui dit où l'on peut écrire, et doit donc atteindre 3:1 sur les deux
+     fonds qu'il sépare (WCAG 2.1, 1.4.11). Le filet `--trait` plafonne à
+     1,76:1 — c'est voulu, il ne porte aucune information —, et cette teinte
+     est mesurée : 4,12:1 sur le fond, 3,44:1 sur la carte. Elle sert aussi le
+     bord des boutons creux et des onglets de grille, qui sont des composants
+     eux aussi. Le premier essai, #4b7d79, tombait à 2,59:1 et 2,16:1 : un
+     contour qu'on devine plutôt qu'on ne le voit. */
+  --trait-champ: #6fa09c;
+  /* L'accent est l'or. Il tient 9,4:1 sur le fond, et porte du vert profond
+     lisible sur un bouton plein — c'est le contraste inverse, 9,4:1 lui
+     aussi. Il remplace le bleu-vert d'avant la refonte sans changer de nom :
+     tout ce qui écrivait `var(--accent)` continue de dire « ce qui compte ». */
+  --accent: #e9c53d;
+  --accent-doux: #14514c;
+  --or: #e9c53d;
+  /* Le crème des panneaux qu'on doit lire de près — le formulaire, l'appel au
+     simulateur, les cartes à publier. Une affiche entièrement sombre fatigue
+     dès qu'il faut remplir six champs ; le crème dit « ici, on travaille ». */
+  --creme: #f4efe4;
+  --sur-creme: #0b3d3a;
+  --sur-creme-doux: #2a4a47;
+  --sur-creme-accent: #0b6167;
+  --creme-trait: #c9c2b4;
+  /* Le bandeau de tête reprend le fond de la page : la rupture est totale, il
+     n'y a plus de bande d'une autre couleur en haut. Les noms restent, pour
+     les feuilles qui les surchargeaient. */
+  --bandeau: #0b3d3a;
+  --bandeau-texte: #f4efe4;
+  --bandeau-doux: #c3d8d4;
+  --bandeau-vif: #e9c53d;
+  /* LES QUATRE SYSTÈMES COMPARÉS, et c'est le nombre qui fait leur qualité.
+     À six teintes, la séparation sous deutéranopie plafonnait à ΔE 8,6 : aucun
+     choix de couleurs n'y changeait rien, six catégories ne se distinguent pas
+     toutes pour un œil qui confond le rouge et le vert. À quatre, la contrainte
+     se relâche d'un coup, et cette palette tient :
+
+       * ΔE ≥ 18,6 entre toutes les paires en vision normale ;
+       * ΔE ≥ 15,5 sous deutéranopie, ≥ 15,2 sous protanopie — au-dessus du
+         plancher de 15, donc séparées pour tout le monde, et non plus
+         seulement pour ceux qui voient les six couleurs ;
+       * 4,8:1 au moins sur le vert profond, chroma ≥ 0,115 (aucune ne lit
+         gris), et une bande de clarté étroite pour qu'aucune courbe ne paraisse
+         plus importante qu'une autre.
+
+     La couleur n'est pas seule pour autant — les tracés gardent leurs motifs,
+     les barres leur intitulé, les écarts leur signe —, mais elle suffit
+     désormais, ce qui n'était pas le cas avant.
+
+     La proposition libérale est en or : c'est l'accent de l'affiche, et la
+     seule couleur que l'œil trouve en premier. C'est fait pour. */
+  --actuel: #76a2ff;
+  --retroactif: #57e7fe;
+  --retroactif-employeur: #e98b97;
+  --liberal: #e9c53d;
+  --alerte: #f0b849;
+  /* Ce qui manque et ce qui reste, sur le graphique du coût. Opaques, et non
+     translucides : deux aplats transparents superposés sur le vert profond
+     donnaient un brun qui ne figurait dans aucune légende, et un rouge
+     translucide y devenait un gris sale. Peints SOUS les courbes, ils ne
+     cachent rien. */
+  --manque: #e8807f;
+  --reste: #8ac44a;
+  /* Palette des graphiques : neuf teintes, assez distinctes pour se suivre
+     empilées, assez proches pour ne pas jurer avec l'affiche. Toutes tiennent
+     au moins 4,5:1 sur le vert profond. */
+  --serie-1: #f4efe4;
+  --serie-2: #ff852d;
+  --serie-3: #61bee6;
+  --serie-4: #fd84b2;
+  --serie-5: #5fd3c4;
+  --serie-6: #e9c53d;
+  --serie-7: #2ebb6b;
+  --serie-8: #d9a98c;
+  --serie-9: #b7c6c3;
+  /* La marge latérale, fluide : 18 px sur un téléphone, 40 px au large. Elle
+     est ici parce que huit blocs s'y alignent, et qu'ils doivent s'aligner au
+     pixel — le bandeau de tête, l'affiche, le bandeau crème, les engagements. */
+  --marge: clamp(1.125rem, 5vw, 2.5rem);
+  /* La largeur de l'affiche. Plus large que les 60 rem d'avant : un titre de
+     97 px a besoin de place, et les grilles à deux colonnes aussi. Le texte
+     courant, lui, reste borné par `.chapeau` et par `p` (voir plus bas) — une
+     ligne de 80 rem ne se lit pas. */
+  --largeur: 80rem;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--fond);
+  color: var(--texte);
+  font-family: "Public Sans", system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  /* En `rem` et non en pixels : une taille en pixels ignore la préférence de
+     taille de police du navigateur, sur laquelle comptent ceux qui l'ont
+     agrandie une fois pour toutes. 1,0625rem vaut les 17px d'origine quand la
+     préférence n'a pas été touchée. */
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  /* La page ne déborde jamais latéralement, quoi qu'on y mette : une carte de
+     1200 px à publier, un tableau de huit colonnes. Ce sont leurs cadres qui
+     défilent, pas le document. */
+  overflow-x: hidden;
+}
+main { max-width: var(--largeur); margin: 0 auto; padding: 0 var(--marge); }
+/* Lien d'évitement : premier élément parcouru au clavier, invisible tant qu'il
+   n'a pas le focus. Sans lui, atteindre le contenu depuis la barre d'adresse
+   impose de traverser les huit onglets de l'en-tête à chaque page (WCAG 2.4.1).
+   Il n'est pas caché par `display:none`, qui le sortirait de l'ordre de
+   tabulation : il est simplement remonté hors de l'écran. */
+.evitement {
+  position: absolute; left: 0.5rem; top: -4rem; z-index: 30;
+  background: var(--or); color: var(--fond);
+  border: 1px solid var(--or); border-radius: 0 0 4px 4px;
+  padding: 0.5rem 0.9rem; font-size: 0.92rem; font-weight: 700;
+  text-decoration: none; transition: top 0.15s;
+}
+.evitement:focus { top: 0; }
+/* `<main>` reçoit le focus au changement de page (voir index.html) : sans quoi
+   le clavier repartirait du haut du document à chaque calcul. Il ne porte pas
+   de contour pour autant — ce n'est pas un élément interactif, et le cerner
+   tout entier n'apprendrait rien. */
+main:focus { outline: none; }
+
+/* Le bandeau : une seule rangée, le nom du site à gauche, les onglets à
+   droite, le tout sur le même vert que la page et fermé par un simple filet.
+   Il est collé en haut parce que la navigation est une barre de neuf onglets :
+   sur les pages longues — Coût, Données —, la reperdre au premier défilement
+   obligeait à remonter de six écrans pour changer de page. Il ne porte plus
+   de lien de retour vers le site du parti : le pied de page l'a, et le
+   bandeau n'a pas à dire d'où l'on vient sur chacune des neuf pages. */
+header.bandeau {
+  border-bottom: 1px solid var(--trait);
+  background: var(--fond);
+  color: var(--bandeau-texte);
+  padding: 0;
+  margin-bottom: 0;
+  position: sticky; top: 0; z-index: 20;
+}
+header.bandeau .interieur {
+  max-width: var(--largeur); margin: 0 auto; padding: 0 var(--marge);
+  display: flex; flex-wrap: wrap; gap: 0 1.5rem;
+  align-items: stretch; justify-content: space-between;
+}
+/* Le nom du site, en capitales serrées, précédé du carré d'or : c'est la
+   marque de l'affiche, et elle tient en douze pixels de côté. Le carré est
+   décoratif — il est dessiné par le style, pas écrit dans le HTML, et aucune
+   synthèse vocale n'a à l'annoncer. Il a la hauteur de la rangée, comme les
+   onglets, pour que la rangée n'ait qu'une hauteur : celle de la barre. */
+header.bandeau .nom {
+  font-size: 0.8125rem; margin: 0; font-weight: 800;
+  letter-spacing: 0.14em; text-transform: uppercase; line-height: 1.3;
+  display: flex; align-items: center; min-height: 3.5rem; min-width: 0;
+}
+header.bandeau .nom a {
+  color: inherit; text-decoration: none;
+  display: inline-flex; align-items: center; gap: 0.75rem;
+}
+header.bandeau .nom a:hover span { color: var(--or); }
+header.bandeau .nom a::before {
+  content: ""; flex: none; width: 0.75rem; height: 0.75rem; background: var(--or);
+}
+/* Le pictogramme du nom a cédé la place au carré : deux marques valent moins
+   qu'une. Il reste dans le HTML pour les deux portages, et ne s'affiche pas. */
+header.bandeau .nom .icone { display: none; }
+/* Dans le cadre que le site parent ouvre sur sa page d'accueil — même
+   origine, classe posée par lui sur `<body>` —, sa navigation est juste
+   au-dessus, et la ligne de pied qui y renvoie ferait doublon. C'est la seule
+   chose que la page sache de son hôte, et elle ne coûte rien s'il cesse de la
+   poser. */
+body.plf-embedded footer .retour-site { display: none; }
+/* Les onglets. Ils ont remplacé les trois groupes étiquetés — « le programme,
+   la preuve, la confiance » —, non parce que ces groupes disaient faux, mais
+   parce que huit pages sous trois intertitres prenaient deux fois la hauteur
+   du bandeau collé, et qu'un bandeau collé qui mange un quart de l'écran ne
+   colle plus rien d'utile. L'étiquette de groupe subsiste dans le HTML, pour
+   les synthèses vocales, et se lit à l'écran comme une simple pause.
+   La marge négative d'un pixel pose le filet des onglets SUR le filet du
+   bandeau : l'onglet courant s'y accroche, comme l'onglet d'un classeur. */
+header.bandeau nav {
+  display: flex; flex-wrap: wrap; gap: 0; margin-bottom: -1px;
+  margin-right: -0.55rem;
+}
+nav .groupe { display: contents; }
+/* L'étiquette de groupe : lue par les synthèses vocales, invisible à l'œil.
+   `clip-path` plutôt que `display:none`, qui la retirerait aussi de l'arbre
+   d'accessibilité — c'est-à-dire de la seule oreille qui l'entend encore. */
+nav .etiquette {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+/* `display: contents` ici AUSSI, et pas seulement sur le groupe : sinon
+   chaque groupe reste un bloc, et la barre se replie par groupes — sur un
+   téléphone, « Programme » occupait une rangée à lui seul, et les huit onglets
+   en prenaient trois. Les liens sont les enfants directs du `<nav>`, et se
+   replient un par un. */
+nav .liens { display: contents; }
+/* Un onglet. Toute la hauteur de la barre — 56 px, bien plus que les 44 de la
+   cible tactile (WCAG 2.5.8) —, capitales serrées, et un filet sous chacun :
+   c'est ce filet qui prend l'or sur l'onglet courant. L'ACTIF NE SE SIGNALE
+   PAS QUE PAR LA COULEUR — un fond d'or seul ne se voit ni en niveaux de
+   gris, ni pour une vision basse, et ne s'annonce pas ; il porte donc un
+   soulignement de 2 px ET `aria-current="page"`. Les règles sont ancrées
+   sur `header.bandeau` : le plan d'une page longue est un `<nav>` lui aussi,
+   et un `nav a` nu lui donnait la hauteur des onglets. */
+header.bandeau nav a {
+  color: var(--texte-doux); text-decoration: none;
+  font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase; white-space: nowrap;
+  display: inline-flex; align-items: center; min-height: 3.5rem;
+  padding: 0 0.55rem;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+header.bandeau nav a:hover {
+  color: var(--bandeau-texte); border-bottom-color: var(--trait-champ);
+}
+header.bandeau nav a[aria-current="page"] {
+  color: var(--or); border-bottom-color: var(--or);
+}
+/* Sous 78 rem — le nom, les neuf onglets et leur jour font 1 168 px —, la
+   rangée unique ne tient plus : le nom prend sa propre rangée, plus basse,
+   et les onglets passent dessous, sur toute la largeur. Deux rangées de
+   44 px : la barre reste collée sans manger l'écran. */
+@media (max-width: 78rem) {
+  header.bandeau .nom { flex: 1 1 100%; min-height: 2.75rem; padding-top: 0.25rem; }
+  header.bandeau nav { width: 100%; margin-left: -0.55rem; }
+  header.bandeau nav a { min-height: 2.75rem; }
+}
+
+/* Les titres de l'affiche. Le premier de chaque page est massif, en capitales,
+   très serré : c'est lui qu'on retient. Il est fluide — de 36 px sur un
+   téléphone à 76 px au large — parce qu'une taille fixe de 76 px coupe
+   « Programme » en trois sur 320 points. */
+h1, h2, h3, h4 { text-wrap: balance; }
+h1 {
+  margin: 0;
+  font-size: clamp(2.25rem, 5.5vw, 4.75rem); line-height: 0.95;
+  font-weight: 900; letter-spacing: -0.04em; text-transform: uppercase;
+}
+/* L'accueil crie un peu plus fort que les autres pages : c'est la seule qui
+   soit lue par quelqu'un qui n'a pas demandé à lire. */
+.affiche h1 {
+  font-size: clamp(2.5rem, 7vw, 6.0625rem); line-height: 0.92;
+  letter-spacing: -0.045em;
+}
+h2 {
+  font-size: clamp(1.75rem, 4vw, 2.5rem); line-height: 1;
+  margin: 3rem 0 1rem; font-weight: 900;
+  letter-spacing: -0.03em; text-transform: uppercase;
+}
+h3 { font-size: 1.25rem; margin: 2rem 0 0.5rem; font-weight: 700;
+     letter-spacing: -0.01em; }
+h4 { letter-spacing: -0.01em; }
+/* Le titre en serif : celui d'un encadré, d'une carte crème, d'un bloc qui
+   parle plutôt qu'il n'assène. Il coexiste avec les capitales sans les
+   concurrencer, parce qu'il ne joue pas dans la même famille. */
+.serif {
+  font-family: "Instrument Serif", Georgia, "Times New Roman", serif;
+  font-weight: 400; text-transform: none; letter-spacing: 0;
+  line-height: 1.05;
+}
+p { margin: 0.7rem 0; max-width: 46rem; }
+a { color: var(--accent); }
+a:hover { opacity: 0.85; }
+/* Le sur-titre d'une page : trois mots en or, en capitales espacées, au-dessus
+   du titre. Il dit où l'on est, ce que le titre ne dit plus depuis qu'il est
+   une phrase et non un intitulé. */
+.surtitre {
+  margin: 0 0 1rem; font-size: 0.975rem; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--or);
+  line-height: 1;
+}
+/* Le chapeau : la phrase sous le titre, en serif, plus grande que le texte
+   courant. C'est la seule chose que lira celui qui ne lit que deux lignes. */
+.chapeau {
+  font-family: "Instrument Serif", Georgia, "Times New Roman", serif;
+  font-size: clamp(1.1875rem, 2vw, 1.625rem); line-height: 1.45;
+  color: var(--texte-doux); max-width: 51rem; margin: 1.5rem 0 0;
+}
+/* L'affiche elle-même : le bloc de tête d'une page. Sur l'accueil, il tient
+   tout le premier écran. */
+.affiche { padding: 3rem 0 2.5rem; }
+.affiche .chapeau { font-size: clamp(1.25rem, 2.4vw, 1.875rem); }
+/* Ce qui, dans une phrase, porte le message. En or ET en demi-gras : l'or seul
+   disparaît pour une vision basse ou un daltonisme fort, et l'emphase avec
+   lui. Deux signaux valent mieux qu'un, et le gras ne coûte rien à personne. */
+.cle-texte, strong.cle-texte { color: var(--or); font-weight: 600; }
+
+.carte {
+  background: var(--fond-carte); border: 1px solid var(--trait);
+  border-radius: 4px; padding: 1.25rem 1.4rem; margin: 1.5rem 0;
+}
+.note {
+  border-left: 3px solid var(--or); background: var(--fond-carte);
+  padding: 0.85rem 1.1rem; margin: 1.5rem 0; font-size: 0.95rem;
+  border-radius: 0 4px 4px 0;
+}
+.note.avertissement {
+  border-left-color: var(--alerte);
+  display: flex; align-items: flex-start; gap: 0.6rem;
+}
+/* Le pictogramme garde sa taille quand le texte passe à la ligne, et se pose
+   sur la première ligne plutôt qu'au milieu du bloc. */
+.note.avertissement > .icone {
+  color: var(--alerte); width: 1.15em; height: 1.15em; margin-top: 0.12em;
+}
+/* Le badge d'un scénario : « proposition » ou « contrefactuel », redit à côté
+   de chaque tableau ce que le préambule a dit une fois. Petit, en capitales
+   espacées, sans couleur porteuse de sens à elle seule : le mot suffit. */
+.badge {
+  display: inline-block; font-size: 0.68rem; letter-spacing: 0.06em;
+  text-transform: uppercase; font-weight: 700; line-height: 1.4;
+  padding: 0.05em 0.45em; border-radius: 3px; vertical-align: 0.15em;
+  border: 1px solid var(--trait-champ); color: var(--texte-doux);
+  white-space: nowrap;
+}
+.badge.proposition { color: var(--or); border-color: var(--or); }
+/* Le point de vigilance : la réserve que la page fait sur elle-même, sortie de
+   la prose et marquée comme un avertissement — c'est un gage de sérieux, pas
+   une note de bas de page. */
+.note.vigilance { border-left-color: var(--alerte); }
+/* Le résumé en langage courant d'une page technique : trois ou quatre phrases
+   avant le détail, dans le même encart qu'une note, un peu plus grand. */
+.note.resume { font-size: 1rem; }
+/* L'entrée de l'accueil : deux lignes qui disent que le site est un
+   simulateur, et le bouton qui l'ouvre. */
+.note.entree { font-size: 1rem; margin: 1.2rem 0; }
+.note.entree p { margin: 0; }
+.note.entree .actions { margin-top: 0.7rem; }
+.discret { color: var(--texte-tres-doux); font-size: 0.9rem; }
+/* -- le panneau crème -------------------------------------------------------
+
+   Tout ce qu'on remplit ou qu'on emporte est posé sur du crème : le
+   formulaire, l'appel au simulateur, les cartes à publier. C'est le seul
+   endroit du site où le texte est sombre sur clair, et il faut donc y
+   redéfinir les couleurs de tout ce qui peut s'y trouver — liens, champs,
+   boutons, filets —, sans quoi un lien d'or sur du crème tomberait à 1,7:1. */
+.creme {
+  background: var(--creme); color: var(--sur-creme);
+  border-radius: 4px; padding: clamp(1.25rem, 4vw, 2rem);
+  margin: 1.5rem 0;
+}
+.creme h2, .creme h3, .creme .surtitre { color: inherit; }
+.creme .surtitre { color: var(--sur-creme-accent); }
+.creme a { color: var(--sur-creme-accent); }
+.creme .discret, .creme .aide, .creme .calcul, .creme label {
+  color: var(--sur-creme-doux);
+}
+.creme input, .creme select, .creme textarea {
+  color: var(--sur-creme); background: #fff; border: 2px solid var(--sur-creme);
+}
+.creme :focus-visible { outline-color: var(--sur-creme); }
+.creme input:focus, .creme select:focus, .creme textarea:focus {
+  outline: 3px solid var(--sur-creme); outline-offset: 2px;
+}
+.creme button, .creme a.bouton {
+  background: var(--sur-creme); color: var(--or); border-color: var(--sur-creme);
+}
+.creme table th, .creme table td { border-bottom-color: var(--creme-trait); }
+.creme thead th { color: var(--sur-creme-doux); }
+
+/* Le bandeau du simulateur, sur l'accueil : le formulaire court, en crème,
+   juste sous le titre. C'est la preuve mise à hauteur de la promesse — on la
+   voit sans défiler, ce qui était tout le reproche fait à l'ancienne page. */
+.simulateur-court .tete {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1.125rem;
+}
+.simulateur-court .tete h2 {
+  margin: 0; font-size: clamp(1.5rem, 3vw, 2.125rem);
+}
+.simulateur-court .tete .etiquette {
+  font-size: 0.75rem; font-weight: 700; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--sur-creme-accent);
+}
+/* Les champs et le bouton sur une seule rangée tant qu'ils tiennent. Le bouton
+   ne se coupe jamais : c'est la seule chose de la rangée qu'on vient chercher. */
+.simulateur-court .grille {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(10.625rem, 100%), 1fr));
+  /* Par le HAUT : alignées par le bas, les cellules calaient chaque champ sur
+     la ligne de rappel qui le suit, et le menu du statut, qui n'en a pas,
+     tombait trente points sous les dates. Chaque champ porte maintenant une
+     ligne d'aide, si bien que les étiquettes ont la même hauteur et que les
+     champs partent de la même ligne. Le bouton, lui, se centre. */
+  gap: 1rem; align-items: start;
+}
+.simulateur-court .grille button { white-space: nowrap; }
+
+/* -- les engagements --------------------------------------------------------
+
+   Les quatre chiffres du programme, en section à part : fond d'un ton
+   au-dessus, filet d'or en tête, numérotés 01 à 04. La numérotation les fait
+   lire comme une liste d'engagements et non comme quatre statistiques
+   orphelines, ce qu'elles étaient tant qu'elles n'avaient ni titre ni rang.
+
+   DEUX PAR LIGNE, ET JAMAIS TROIS. Deux colonnes fixes : trois ne peuvent
+   pas tenir, quelle que soit la largeur de l'écran. C'est une correction
+   demandée deux fois — à trois colonnes, la quatrième carte tombait seule sur
+   sa ligne, et « on avait le cul entre deux chaises ». Le passage à une
+   colonne se fait sous 48 rem, dans la même requête que le retrait et le
+   filet des cartes paires : la grille se repliait d'elle-même par `auto-fit`
+   dès 40 rem, quand le filet, lui, n'était retiré qu'à 34 rem — entre les
+   deux, une carte sur deux restait en retrait de 24 points. */
+.engagements {
+  margin: 4rem 0 0; background: var(--fond-carte);
+  border-top: 4px solid var(--or);
+}
+.engagements .grille {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0; padding: 0.5rem clamp(1.25rem, 4vw, 2rem) 2.25rem;
+  /* Le filet de séparation est porté par les cartes, et non par le fond du
+     conteneur : un fond qui sert de trait laisse un rectangle vert vide dès
+     qu'une rangée est incomplète, et c'est exactement ce qu'on a vu. Ce qui
+     dépasse au bord est coupé. */
+  overflow: hidden;
+}
+.engagements .engagement {
+  padding: 1.75rem 1.5rem 0 0; display: grid; gap: 1rem; align-content: start;
+}
+/* La deuxième colonne porte son filet à GAUCHE : à droite, il pendrait dans le
+   vide au bord du bloc. */
+.engagements .engagement:nth-child(even) {
+  padding: 1.75rem 1.5rem 0; box-shadow: -1px 0 0 var(--trait);
+}
+.engagements .rang {
+  font-size: 0.9375rem; font-weight: 700; letter-spacing: 0.16em;
+  color: var(--texte-doux); line-height: 1;
+}
+/* Le chiffre. Fluide, et sans `nowrap` : « 1 compte » ne doit pas pouvoir
+   franchir sa colonne, et un chiffre coupé vaut mieux qu'une page qui déborde. */
+.engagements .chiffre {
+  font-size: clamp(2.375rem, 8vw, 3.75rem); line-height: 0.9;
+  font-weight: 900; letter-spacing: -0.05em; color: var(--or);
+}
+/* La promesse, en serif, en crème plein contraste, séparée par un filet. C'est
+   elle qui porte le message, et c'est elle qui se perdait quand les cartes
+   n'avaient que deux niveaux. */
+.engagements .promesse {
+  font-family: "Instrument Serif", Georgia, "Times New Roman", serif;
+  font-size: 1.5625rem; line-height: 1.25; color: var(--texte);
+  border-top: 1px solid var(--trait); padding-top: 1rem;
+}
+/* Le détail technique : 18 px et non 15, et une teinte éclaircie. « C'est
+   illisible pour certaines personnes » — le petit texte du programme est
+   précisément celui qu'on lit en plein jour sur un téléphone. */
+.engagements .detail {
+  font-size: 1.125rem; line-height: 1.6; color: var(--texte-doux);
+}
+
+/* -- les trois gestes -------------------------------------------------------
+
+   Comment le calcul marche, en trois lignes numérotées. Le chiffre est énorme
+   et l'interligne serré : à taille de texte courant, les trois gestes se
+   lisaient comme une note de bas de page à côté du tableau qui leur fait
+   face, alors qu'ils pèsent autant. */
+ol.gestes {
+  margin: 0; padding: 0; list-style: none; display: grid; gap: 0;
+  font-size: 1.5rem; line-height: 1.45; color: var(--texte-doux);
+  border-top: 1px solid var(--trait);
+}
+ol.gestes > li {
+  display: grid; grid-template-columns: 4rem 1fr; gap: 1.125rem;
+  padding: 0.8rem 0; border-bottom: 1px solid var(--trait);
+  align-items: baseline;
+}
+ol.gestes > li > .rang {
+  font-size: 3.125rem; line-height: 0.85; font-weight: 900;
+  letter-spacing: -0.05em; color: var(--or);
+}
+ol.gestes > li strong { color: var(--texte); font-weight: 700; }
+
+/* L'encadré d'or : un bloc qui se détache sans changer de fond. Il porte ce
+   qui mérite d'être lu à part — le tableau du plancher, un repère, une mise en
+   garde argumentée. */
+.encadre {
+  border: 2px solid var(--or); padding: clamp(1.25rem, 4vw, 2rem);
+  margin: 1.5rem 0;
+}
+.encadre > :first-child { margin-top: 0; }
+.encadre > :last-child { margin-bottom: 0; }
+/* Deux colonnes de même poids, qui se mettent l'une sous l'autre quand la
+   place manque. C'est la mise en page de l'accueil sous les engagements, et
+   celle de la Trajectoire sous son graphique. */
+.paire {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(23.75rem, 100%), 1fr));
+  gap: clamp(1.75rem, 4vw, 3rem); margin: 3.5rem 0; align-items: start;
+}
+
+form .grille {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr));
+  gap: 1rem 1.5rem;
+}
+/* Les aides de saisie n'ont pas toutes la même longueur, et une date porte
+   sous elle une ligne de rappel (« soit 21 ans ») que les autres champs n'ont
+   pas. Chaque cellule devenait une colonne dont le libellé absorbait la
+   hauteur en trop : les champs se calaient par le BAS, et une date, qui garde
+   sa ligne de rappel sous elle, remontait d'autant au-dessus de ses voisins.
+
+   Chaque cellule est donc une SOUS-GRILLE de trois rangées — libellé,
+   contrôle, rappel — partagées par toute la rangée : les libellés ont la
+   même hauteur, les contrôles partent tous de la même ligne, et le rappel
+   d'une date ne pousse plus rien. La sous-grille ne reprend pas l'écart de
+   rangée de la grille : il n'en faut aucun entre un libellé et son champ. */
+form .grille > div { display: grid; grid-template-rows: subgrid; grid-row: span 3; row-gap: 0; }
+@supports not (grid-template-rows: subgrid) {
+  form .grille > div { display: flex; flex-direction: column; }
+  form .grille > div > label { flex: 1 0 auto; }
+}
+/* `hidden` seul ne masque rien ici : `display: grid` ci-dessus l'emporte sur
+   la feuille du navigateur. La règle est écrite pour le champ de revenu d'une
+   période sans emploi, que la page retire dès que le motif est choisi. */
+form .grille > div[hidden] { display: none; }
+/* Le bouton du formulaire court occupe les mêmes trois rangées, et se pose
+   sur celle des contrôles : ni au niveau des libellés, ni centré au jugé. */
+form .grille > .action { display: grid; grid-template-rows: subgrid; grid-row: span 3; }
+form .grille > .action > button { grid-row: 2; }
+/* Le libellé d'un champ : 15 px, casse normale, demi-gras. PAS de capitales
+   espacées à 12 px, si joli que ce fût : les capitales et le corps réduit sont
+   deux handicaps qui se cumulent, notamment pour les dyslexiques. */
+label {
+  display: block; font-size: 0.9375rem; font-weight: 600; line-height: 1.2;
+  color: var(--texte); margin-bottom: 0.4rem;
+}
+/* Pas d'`opacity` ici : elle ferait tomber l'aide sous le plancher de 4,5:1
+   des textes courants (WCAG 1.4.3). La couleur pleine et la taille suffisent à
+   la distinguer du libellé. */
+label .aide {
+  display: block; font-size: 0.875rem; font-weight: 400;
+  color: var(--texte-doux);
+}
+/* Ce qu'une date saisie vaut en âge, sous le champ qui la porte : « soit
+   64 ans et 7 mois ». Le calendrier a remplacé les champs d'âge ; cette ligne
+   rend l'âge qu'ils disaient, et la page le recalcule à chaque frappe. */
+.calcul {
+  display: block; font-size: 0.875rem; color: var(--texte-doux);
+  margin-top: 0.3rem;
+}
+input, select, textarea {
+  width: 100%; padding: 0.7rem 0.75rem; font: inherit; font-size: 1rem;
+  color: var(--texte); background: var(--fond); border: 2px solid var(--trait-champ);
+  border-radius: 0;
+}
+/* Tous les contrôles d'une rangée à la même hauteur : un champ de date
+   faisait 54 points, un menu déroulant 47, un nombre 52, et leurs bords
+   supérieurs ne se rejoignaient pas. */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select {
+  min-height: 3.375rem;
+}
+/* Le relevé de carrière se lit en colonnes : une police à chasse fixe aligne
+   les années les unes sous les autres, et une faute de frappe s'y voit. Le
+   redimensionnement reste vertical — l'élargir déborderait de la carte. */
+textarea {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.88rem; line-height: 1.45; resize: vertical;
+}
+/* Un seul indicateur de focus pour tout ce qui se parcourt au clavier — champs,
+   liens, onglets, boutons, dépliants, tableaux défilants. Il manquait tout
+   entier avant la refonte, et c'était le défaut d'accessibilité le plus
+   pénalisant du site : au clavier, on ne savait pas où l'on était. Trois
+   pixels d'or, décalés de trois, sur fond sombre ; du vert profond dans les
+   panneaux crème, où l'or se perdrait. */
+:focus-visible {
+  outline: 3px solid var(--or); outline-offset: 3px; border-radius: 0;
+}
+input:focus, select:focus, textarea:focus {
+  outline: 3px solid var(--or); outline-offset: 2px;
+}
+/* Le bouton de l'affiche : or plein, vert profond dessus, capitales, carré.
+   Rien d'arrondi — une affiche n'arrondit pas ses angles. */
+button {
+  font: inherit; font-size: 1rem; font-weight: 900;
+  letter-spacing: 0.02em; text-transform: uppercase;
+  padding: 1rem 1.5rem; min-height: 3rem; cursor: pointer;
+  color: var(--fond); background: var(--or);
+  border: 2px solid var(--or); border-radius: 0;
+}
+button:hover { opacity: 0.88; }
+.actions { display: flex; flex-wrap: wrap; gap: 0.75rem 1.4rem; align-items: center;
+           margin: 1.5rem 0 0; }
+/* Un lien qui a le poids d'un bouton : il ouvre le simulateur, c'est-à-dire
+   la seule chose que la page Coût invite à faire. Il reste un lien — il mène à
+   une autre adresse, se copie et s'ouvre dans un onglet —, seul son habit
+   change. */
+a.bouton {
+  display: inline-flex; align-items: center; min-height: 3rem;
+  text-decoration: none;
+  color: var(--fond); background: var(--or);
+  border: 2px solid var(--or); border-radius: 0;
+  padding: 0.85rem 1.5rem; font-size: 1rem; font-weight: 900;
+  letter-spacing: 0.02em; text-transform: uppercase;
+}
+a.bouton:hover { opacity: 0.88; }
+p.discret > a:only-child, p.actions > a:not(.bouton) {
+  display: inline-flex; align-items: center; min-height: 1.5rem;
+}
+/* Le bouton secondaire : même taille, même cible tactile, mais creux. Il porte
+   ce qu'on peut faire, et non ce qu'on est venu faire. */
+button.second, a.bouton.second {
+  background: transparent; color: var(--texte); border-color: var(--trait-champ);
+  font-weight: 700; text-transform: none; letter-spacing: 0;
+}
+button.second:hover, a.bouton.second:hover { border-color: var(--or); opacity: 1; }
+/* Les métiers de la carrière : une boîte par métier, la dernière en pointillé
+   parce qu'elle n'en décrit encore aucun — c'est celle qui sert à en ajouter. */
+.metiers { display: grid; gap: 0.9rem; margin: 0.9rem 0 0; }
+.metier {
+  border: 1px solid var(--creme-trait); border-radius: 4px; padding: 0.9rem 1rem;
+  /* `<fieldset>` porte des marges et un padding propres à chaque navigateur. */
+  margin: 0; min-width: 0;
+}
+.metier.facultatif { border-style: dashed; }
+/* Le rang du métier est la LÉGENDE du groupe : « Revenu brut mensuel » est le
+   même libellé dans les deux blocs, et seule cette légende dit lequel on
+   remplit — à l'œil comme à l'oreille (WCAG 3.3.2). */
+.metier > .rang {
+  margin: 0; padding: 0 0.35rem; font-size: 0.78rem; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--texte-doux); font-weight: 700;
+}
+/* La légende écrivait la couleur du texte doux SUR CRÈME, alors que le
+   formulaire long est sur carte sombre : « PREMIER MÉTIER » y était du vert
+   foncé sur vert foncé, et ne se lisait qu'à l'impression. */
+.creme .metier > .rang { color: var(--sur-creme-doux); }
+/* Les pictogrammes. Un seul jeu — Lucide, grille de 24, trait de 2 —, une
+   seule règle : ils prennent la taille et la couleur du texte qui les porte. */
+.icone {
+  width: 1.05em; height: 1.05em; flex: none; vertical-align: -0.16em;
+}
+details { margin-top: 1.25rem; }
+/* Le résumé d'un dépliant porte SON chevron, et non celui du navigateur : le
+   marqueur natif n'a ni la même forme ni la même taille d'un moteur à l'autre,
+   et ne suit aucune de nos grilles. Il est donc masqué partout, une fois. */
+summary {
+  cursor: pointer; color: var(--texte-doux); font-size: 0.95rem;
+  display: flex; align-items: center; gap: 0.45rem; list-style: none;
+  min-height: 2.75rem;
+}
+summary::-webkit-details-marker { display: none; }
+summary::marker { content: ""; }
+summary > .icone { color: var(--or); transition: transform 0.15s; }
+details[open] > summary > .icone { transform: rotate(180deg); }
+summary:hover { color: var(--texte); }
+details > .grille { margin-top: 1rem; }
+/* Une section repliée. Son titre a le poids d'un intertitre, parce qu'il en
+   tient lieu : c'est lui qu'on parcourt pour savoir ce que la page contient
+   encore. Les sections se suivent sans espace entre elles, séparées par un
+   filet, pour qu'une pile de dix se lise comme un sommaire. */
+details.section { margin: 0; border-top: 1px solid var(--trait); }
+details.section:last-of-type { border-bottom: 1px solid var(--trait); }
+details.section > summary {
+  color: var(--texte); font-size: 1.0625rem; font-weight: 700;
+  padding: 0.85rem 0.2rem; gap: 0.6rem;
+}
+details.section > summary:hover { color: var(--or); }
+details.section > .dedans { padding: 0 0 1.2rem 1.65rem; }
+details.section > .dedans > :first-child { margin-top: 0; }
+details.section > .dedans > h4 {
+  font-size: 1rem; font-weight: 700; margin: 1.5rem 0 0.4rem;
+}
+/* Un tableau plus large que l'écran défile horizontalement. La zone qui défile
+   doit pouvoir recevoir le focus, sinon elle est inatteignable au clavier chez
+   les moteurs qui ne rendent pas focusables les boîtes défilantes (WCAG 2.1.1)
+   : le HTML lui donne `tabindex="0"`, et le style rend ce focus visible.
+   L'inertie tactile est celle d'iOS, sans laquelle le défilement y est sec. */
+.defilant {
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  /* Conteneur de requête : la légende du tableau se dimensionne en `cqw`
+     sur la zone visible, et non sur le tableau qui la déborde. */
+  container-type: inline-size;
+}
+/* Et il le DIT. Rien n'indiquait qu'il restait des colonnes à droite : une
+   ombre portée au bord droit apparaît tant qu'il y a quelque chose à atteindre,
+   et disparaît en bout de course. `scroll-timeline` n'étant pas encore
+   partout, l'ombre est peinte en fond attaché — la technique de Roman Komarov,
+   qui ne demande pas une ligne de script. */
+.defilant {
+  background:
+    linear-gradient(to right, var(--fond-defilant) 30%, transparent) left center,
+    linear-gradient(to left, var(--fond-defilant) 30%, transparent) right center,
+    radial-gradient(farthest-side at 0 50%, rgba(0, 0, 0, 0.4), transparent) left center,
+    radial-gradient(farthest-side at 100% 50%, rgba(0, 0, 0, 0.4), transparent) right center;
+  background-repeat: no-repeat;
+  background-size: 2.5rem 100%, 2.5rem 100%, 0.9rem 100%, 0.9rem 100%;
+  background-attachment: local, local, scroll, scroll;
+}
+/* Le voile prend la couleur de ce qui porte le tableau. Peint dans le vert de
+   la page, il faisait sur chaque carte une bande d'un ton plus sombre au bord
+   droit, même quand rien ne défilait. */
+.carte, .note, .plan, .erreur, .cadre-carte, .engagements, section.cle {
+  --fond-defilant: var(--fond-carte);
+}
+.creme { --fond-defilant: var(--creme); }
+table { border-collapse: collapse; width: 100%; font-size: 1rem; }
+/* Le titre du tableau, énoncé par les synthèses vocales avant son contenu et
+   lu à l'écran comme l'intitulé de la grille. */
+caption {
+  caption-side: top; text-align: left; font-size: 0.9rem;
+  color: var(--texte-doux); padding: 0 0 0.5rem;
+}
+/* Une `<caption>` est large comme son tableau : quand il déborde de l'écran,
+   elle est coupée avec lui (« Ce que le plancher individualisé change, p »).
+   Elle porte donc un `<span>` collant, large comme la zone visible — `cqw`
+   se mesure sur `.defilant` —, qui suit le défilement sans jamais le quitter.
+   Une `<caption>` ne peut pas être collante elle-même, et en bloc elle passe
+   sous l'en-tête : c'est le `<span>` qui l'est. */
+caption > span {
+  display: block; position: sticky; left: 0; width: 100cqw; box-sizing: border-box;
+}
+tbody th { font-weight: 700; }
+/* Une ligne « dont » ventile celle du dessus : elle se lit en retrait et en
+   maigre, comme dans le tableau du COR qu'elle imite, et une ligne « pour
+   mémoire » de même — elle n'entre dans aucun total. */
+tbody th .dont { font-weight: 400; color: var(--texte-doux); padding-left: 1.2rem; display: inline-block; }
+th, td { text-align: right; padding: 0.7rem 0.6rem; border-bottom: 1px solid var(--trait); }
+th:first-child, td:first-child { text-align: left; }
+thead th {
+  font-size: 0.875rem; color: var(--texte-doux); font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  border-bottom: 2px solid var(--or);
+}
+/* `:is(th, td)`, et non `td` seul : l'en-tête de rangée gardait son filet, et
+   chaque tableau finissait par un trait orphelin sous sa première cellule. */
+tbody tr:last-child :is(th, td) { border-bottom: none; }
+td.nombre, th.nombre { font-variant-numeric: tabular-nums; }
+/* Un nombre ne se coupe pas : « 12 028,70 € par / an », « 62 / ans »,
+   « 2026-09- / 14 » se lisaient ainsi dès qu'une colonne manquait de place. */
+td.nombre, td.date, th.date { white-space: nowrap; }
+/* Une colonne de NOTES, longues de plusieurs lignes : sans largeur minimale,
+   la grille la réduisait à deux cents points et une note de trente lignes
+   faisait une rangée de sept cents. */
+td.long, th.long { min-width: 18rem; }
+/* Les deux grands tableaux de la page Données : 91 séries sur cinq colonnes,
+   89 régimes sur sept. Sans largeur minimale, la colonne des statuts d'un
+   régime mettait un code par ligne et une rangée faisait cinq cents points. */
+table#series { min-width: 40rem; }
+table#inventaire { min-width: 64rem; }
+/* Une colonne de PHRASES, et non de nombres : elle se lit alignée à gauche,
+   comme tout texte. */
+td.texte, th.texte { text-align: left; }
+/* L'en-tête d'une colonne triable est un bouton : il hérite de la police et
+   de la couleur de l'en-tête, et seul le trait pointillé le signale — comme
+   un mot du glossaire. Le sens du tri se lit dans `aria-sort`, et une flèche
+   le redit à l'œil. */
+th > .tri {
+  /* `min-height: 0` défait la cible de 48 px des boutons de l'affiche, qui
+     déformerait l'en-tête du tableau ; 24 px restent le plancher tactile, et
+     le padding vertical les donne sans écarter les colonnes. */
+  font: inherit; color: inherit; background: none; border: none;
+  padding: 0.25rem 0; min-height: 1.5rem;
+  text-transform: inherit; letter-spacing: inherit;
+  cursor: pointer; border-bottom: 1px dotted currentColor;
+}
+th > .tri:hover { color: var(--or); }
+th[aria-sort="ascending"] > .tri::after { content: " \2191"; }
+th[aria-sort="descending"] > .tri::after { content: " \2193"; }
+/* Les filtres d'un tableau : un champ de recherche et deux menus, sur une
+   ligne, et le compte de ce qui reste en dessous. */
+.filtres {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(12rem, 100%), 1fr));
+  gap: 0.8rem 1.2rem; margin: 1rem 0 0.5rem;
+}
+.filtres + .compte { margin: 0.2rem 0 0.8rem; }
+tbody tr[hidden] { display: none; }
+/* Le plan d'une page longue : ce qu'elle contient, en une liste de liens qui
+   se parcourt du regard avant de lire. */
+.plan {
+  background: var(--fond-carte); border-left: 3px solid var(--or);
+  padding: 0.85rem 1.1rem; margin: 1.5rem 0; font-size: 0.95rem;
+}
+.plan .etiquette {
+  margin: 0 0 0.35rem; font-size: 0.78rem; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--texte-doux); font-weight: 700;
+}
+.plan ol {
+  margin: 0; padding: 0; list-style: none;
+  display: flex; flex-wrap: wrap; gap: 0.25rem 1.1rem;
+}
+/* Les entrées du plan ont la composition des onglets d'avant la barre — elles
+   l'héritaient d'un `nav a` nu, elles la portent maintenant en propre. */
+.plan a {
+  color: var(--texte); text-decoration: none;
+  font-size: 0.875rem; font-weight: 700; letter-spacing: 0.04em;
+  text-transform: uppercase;
+  display: inline-flex; align-items: center; min-height: 2.75rem;
+  padding: 0 0.7rem;
+  border-bottom: 1px solid var(--trait-champ);
+}
+.plan a:hover { color: var(--or); border-bottom-color: var(--or); }
+/* Les onglets d'une grille : des boutons radio, dont le libellé fait
+   l'onglet. Le clavier les parcourt aux flèches, comme tout groupe de radios,
+   et le panneau suit sans une ligne de script : `:has()` lit lequel est
+   coché. Là où `:has()` n'existe pas, le premier panneau reste visible et les
+   autres restent repliés — la page dit moins, mais ne dit rien de faux. */
+.onglets { border: none; padding: 0; margin: 1.25rem 0 0.75rem;
+           display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
+.onglets legend { float: left; font-size: 0.9rem; color: var(--texte-doux);
+                  padding: 0; margin-right: 0.4rem; }
+.onglets input {
+  position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0;
+  overflow: hidden; clip-path: inset(50%);
+}
+.onglets label {
+  display: inline-flex; align-items: center; min-height: 2.75rem;
+  margin: 0; font-size: 0.9375rem; font-weight: 600; color: var(--texte);
+  padding: 0 1rem; border: 2px solid var(--trait-champ);
+  border-radius: 0; cursor: pointer;
+}
+.onglets input:checked + label {
+  background: var(--or); color: var(--fond); border-color: var(--or);
+  font-weight: 700;
+}
+.onglets input:focus-visible + label { outline: 3px solid var(--or); outline-offset: 3px; }
+.onglets label:hover { border-color: var(--or); }
+/* LA BASCULE : un choix entre deux états qui NAVIGUE.
+
+   Son cousin `.onglets` montre et cache des panneaux déjà rendus — un bouton
+   radio et `:has()` y suffisent. Celle-ci change l'adresse, donc recalcule :
+   ses branches sont des LIENS, et l'état courant n'en est pas un. C'est ce qui
+   la rend utilisable sans JavaScript, partageable, et lisible par un lecteur
+   d'écran, à qui `aria-current` dit où l'on est.
+
+   Elle était un lien discret en bas de page — « Voir les montants en brut » —,
+   c'est-à-dire un réglage que personne ne voyait et dont personne ne pouvait
+   deviner l'état courant. Les deux états sont maintenant écrits côte à côte,
+   et celui qui s'applique est rempli. On lit le réglage sans le chercher. */
+.bascule {
+  display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.4rem;
+  /* Une marge à droite : deux bascules côte à côte — unité, montants — se
+     touchaient, la seconde légende collée au dernier bouton de la première. */
+  margin: 0.9rem 1.25rem 0 0;
+}
+.bascule > .legende {
+  font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--texte-doux); margin-right: 0.15rem;
+}
+/* Les deux branches tiennent dans une enveloppe qui NE SE COUPE PAS : quand la
+   largeur manque, c'est la légende qui passe seule à la ligne. Un contrôle
+   scindé en deux lignes cesse d'être un contrôle. */
+.bascule > .choix { display: inline-flex; flex-wrap: nowrap; gap: 0.4rem; }
+/* Les branches partagent tout sauf leur état : une seule règle pour les deux,
+   de sorte qu'elles ne puissent pas se décaler d'un pixel. */
+.bascule .choix > a, .bascule .choix > .actif {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 2.75rem; white-space: nowrap;
+  padding: 0 1rem; font-size: 0.9375rem; font-weight: 600;
+  border: 2px solid var(--trait-champ); color: var(--texte);
+  text-decoration: none;
+}
+.bascule .choix > .actif {
+  background: var(--or); color: var(--fond); border-color: var(--or);
+  font-weight: 700; cursor: default;
+}
+.bascule .choix > a:hover { border-color: var(--or); }
+.bascule .choix > a:focus-visible { outline: 3px solid var(--or); outline-offset: 3px; }
+.panneaux > .panneau[hidden] { display: none; }
+.onglets:has(input:checked) ~ .panneaux > .panneau { display: none; }
+.onglets:has(#grille-actuel:checked) ~ .panneaux > .panneau[data-onglet="actuel"],
+.onglets:has(#grille-notionnel_liberal:checked) ~ .panneaux > .panneau[data-onglet="notionnel_liberal"],
+.onglets:has(#grille-notionnel_retroactif:checked) ~ .panneaux > .panneau[data-onglet="notionnel_retroactif"],
+.onglets:has(#grille-notionnel_retroactif_employeur:checked) ~ .panneaux > .panneau[data-onglet="notionnel_retroactif_employeur"] {
+  display: block;
+}
+/* Un résultat de simulation : l'intitulé, le montant, l'écart, et la barre qui
+   donne une forme au montant. Les quatre se suivent, séparés d'un filet, sur
+   le fond de la page — pas dans des cartes, qui auraient fait quatre objets là
+   où il faut une comparaison. */
+.scenario { margin: 0; padding: 1.125rem 0; border-bottom: 1px solid var(--trait); }
+.scenario:first-of-type { border-top: 1px solid var(--trait); }
+/* Le bloc des montants passe sous l'intitulé D'UN SEUL TENANT quand la place
+   manque : c'est l'entête qui se replie, pas le montant. */
+.scenario .entete { display: flex; justify-content: space-between; gap: 0.2rem 1rem;
+                    align-items: baseline; flex-wrap: wrap; }
+.scenario .titre { flex: 1 1 14rem; font-size: 1.0625rem; font-weight: 700; }
+/* Un montant par scénario, et un seul : le pouvoir d'achat de l'année de
+   référence, PAR MOIS. Deux autres nombres l'ont accompagné puis quitté — la
+   somme nominale du mois du départ, puis le total annuel. Une pension se pense
+   au mois, comme un salaire ; le total annuel ne servait qu'à multiplier par
+   douze sous les yeux du lecteur. */
+.scenario .montant { display: flex; justify-content: flex-end; align-items: baseline;
+                     gap: 1.1rem; flex-wrap: nowrap; margin-left: auto;
+                     font-variant-numeric: tabular-nums; }
+.scenario .chiffre { display: flex; flex-direction: column; align-items: flex-end;
+                     white-space: nowrap; }
+.scenario .chiffre .somme { line-height: 1.2; }
+.scenario .chiffre .unite { font-size: 0.8rem; color: var(--texte-doux); }
+/* Ce que le nombre mesure, AU-DESSUS de lui — « salaire », « retraite ». Deux
+   grands nombres se touchent sur chaque ligne, et rien ne les distinguait
+   qu'une unité lue après coup ; on lit maintenant ce qu'on regarde avant de le
+   lire. Même traitement que la frise de repères des pages Coût et Avantages :
+   capitales espacées, petit corps, couleur douce. */
+.scenario .chiffre .categorie {
+  font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--texte-doux); line-height: 1.4;
+}
+.scenario .principal .somme {
+  font-size: 1.875rem; font-weight: 900; letter-spacing: -0.03em;
+}
+/* Le salaire net, à gauche de la pension et DE LA MÊME TAILLE QU'ELLE.
+   Deux grandeurs de nature différente se touchent ici — ce qu'on touche en
+   travaillant, ce qu'on touchera à la retraite —, et elles comptent autant
+   l'une que l'autre : une réforme des retraites se juge sur les deux. Elles
+   étaient d'abord écrites à deux tailles, la pension dominant le salaire ;
+   le salaire s'y perdait, et c'est précisément lui que personne ne chiffre.
+
+   Ce qui les distingue n'est donc plus la taille mais l'étiquette, et un
+   filet vertical qui les sépare — le même idiome que la frise de repères des
+   pages Coût et Avantages. */
+.scenario .salaire { align-items: flex-end; padding-right: 1.1rem;
+                     box-shadow: 1px 0 0 var(--trait); }
+.scenario .salaire .somme {
+  font-size: 1.875rem; font-weight: 900; letter-spacing: -0.03em;
+}
+.scenario .salaire .unite { white-space: nowrap; text-align: right; }
+/* L'écart n'est écrit que là où il y en a un — donc sur la seule proposition —
+   et dans la couleur d'accent, qui ne sert nulle part ailleurs dans ce bloc. */
+.scenario .salaire .ecart { font-size: 0.95rem; font-weight: 700;
+                            color: var(--accent); white-space: nowrap; }
+/* Ce que les comptes du système financent de la pension qu'il promet, à droite
+   d'elle et PLUS PETIT QU'ELLE. La taille dit son statut : ce n'est pas un
+   cinquième montant, c'est une lecture du quatrième — la promesse ramenée à ce
+   que les recettes des années de retraite paient. Le filet la sépare de la
+   pension comme celui du salaire sépare le salaire, dans l'autre sens.
+
+   Elle n'apparaît que sous un coefficient d'équilibre INFÉRIEUR À UN :
+   au-dessus, il n'y a pas de montant à écrire, seulement une marge, que la
+   glose dit en toutes lettres. */
+.scenario .finance { align-items: flex-end; padding-left: 1.1rem;
+                     box-shadow: -1px 0 0 var(--trait); }
+.scenario .finance .somme {
+  font-size: 1.375rem; font-weight: 800; letter-spacing: -0.02em;
+  color: var(--texte-doux);
+}
+.scenario .finance .unite { white-space: nowrap; text-align: right; }
+/* Ce qui manque, EN EUROS, sous le montant que les recettes paient. C'est le
+   seul endroit de la page où l'écart est une somme et non un taux, et c'est le
+   chiffre que le lecteur retient : « 87 % » est une proportion, « il manque
+   393 € par mois » se compare à un loyer. Même idiome que l'écart de salaire,
+   à la couleur près — celle du manque, qui sert déjà à cela dans les
+   graphiques, et non l'accent, qui dit ailleurs ce que la proposition
+   RAPPORTE. */
+.scenario .finance .ecart { font-size: 0.95rem; font-weight: 700;
+                            color: var(--manque); white-space: nowrap; }
+/* Les trois façons de combler le manque, dans le dépliant des résultats : une
+   liste, pas un tableau. Un tableau de trois lignes et trois colonnes rangeait
+   « 3,5 points d'assiette » en face de « 1,49 % du PIB » et laissait au
+   lecteur le soin de comprendre qu'il s'agissait du même trou ; trois phrases
+   nommant chacune QUI PAIE se lisent d'un coup d'œil. */
+.leviers { list-style: none; padding: 0; margin: 1rem 0; display: grid;
+           gap: 0.75rem; }
+.leviers > li { padding: 0.75rem 1rem; background: var(--fond-appui);
+                border-left: 3px solid var(--trait); line-height: 1.5; }
+@media (max-width: 48rem) {
+  .scenario .finance { align-items: flex-start; padding-left: 0;
+                       box-shadow: none; }
+}
+@media (max-width: 48rem) {
+  /* Deux grands nombres ne tiennent pas côte à côte sous 768 px : ils passent
+     l'un sous l'autre, le filet vertical devient horizontal, et les étiquettes
+     repassent à gauche avec eux. */
+  .scenario .montant { flex-wrap: wrap; justify-content: flex-start;
+                       gap: 0.4rem 1.1rem; }
+  .scenario .salaire { align-items: flex-start; padding-right: 0;
+                       padding-bottom: 0.4rem; box-shadow: none;
+                       border-bottom: 1px solid var(--trait); flex: 1 0 100%; }
+  .scenario .salaire .unite { text-align: left; }
+}
+/* La glose sous un scénario : en sans-serif 16 px, et non en serif fin 15 px.
+   C'était le texte le plus fatigant du site — à cette taille, un serif fin est
+   un obstacle de plus. */
+.scenario .glose {
+  font-size: 1rem; line-height: 1.5; color: var(--texte-doux); margin-top: 0.35rem;
+  max-width: 46rem;
+}
+/* La barre. Elle ne s'ajoute à rien : elle donne une forme aux montants déjà
+   écrits, dans la même ligne. Celle de la proposition libérale est plus épaisse
+   que les autres — c'est elle que l'œil trouve en premier, sans qu'on ait à
+   l'écrire. */
+.barre { height: 14px; background: var(--fond-carte); margin-top: 0.75rem;
+         display: flex; align-items: center; }
+.barre > span { display: block; height: 10px; }
+.barre.actuel > span { background: var(--actuel); }
+.barre.retroactif > span { background: var(--retroactif); }
+.barre.retroactif-employeur > span { background: var(--retroactif-employeur); }
+.barre.liberal > span { background: var(--liberal); height: 14px; }
+/* Le pilier capitalisé, dans la barre de la proposition : la même couleur,
+   hachurée. Même système, autre nature — un capital placé, pas une pension
+   mutualisée. Une seconde teinte l'aurait rangé ailleurs ; une hachure dit
+   « ceci n'est pas de la répartition » sans quitter la famille, et se voit
+   aussi en noir et blanc et sous une deutéranopie. */
+.barre.liberal > span.capitalise {
+  background: repeating-linear-gradient(135deg, var(--liberal) 0 3px,
+                                        var(--fond-carte) 3px 6px);
+}
+/* Ce que les comptes du système NE financent pas de la pension qu'il promet :
+   la fin de la barre, dans la couleur du système, presque effacée. La règle
+   vient après les quatre précédentes et n'en annule aucune — elle ne touche
+   que l'opacité, si bien qu'elle s'applique aussi à la tranche capitalisée
+   sans avoir à redire sa hachure. Un creux plutôt qu'une seconde teinte : la
+   promesse et son financement sont une seule grandeur, coupée en deux. */
+.barre > span.manque { opacity: 0.25; }
+/* De quoi le montant de la proposition est fait, sous le chiffre et aligné sur
+   lui : le total se lit d'abord, sa composition juste après. Sur un téléphone,
+   la ligne repasse à gauche avec le reste du bloc.
+
+   Elle ne s'appelle PAS « partage », et c'est délibéré : cette classe-là est
+   déjà celle de la barre de boutons de partage, qui porte un filet or de 3 px
+   sur toute la largeur. Un nom repris ailleurs a tiré ce filet en travers du
+   bloc de la proposition, entre le montant et sa barre — une ligne jaune
+   continue que rien n'expliquait. */
+.scenario .composition {
+  display: block; text-align: right; font-size: 0.9rem;
+  color: var(--texte-doux); margin-top: 0.2rem;
+}
+@media (max-width: 40rem) { .scenario .composition { text-align: left; } }
+.fiches { display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(min(11rem, 100%), 1fr));
+          gap: 1rem; }
+.fiche .valeur { font-size: 1.25rem; font-variant-numeric: tabular-nums;
+                 font-weight: 700; }
+.fiche .etiquette { font-size: 0.85rem; color: var(--texte-doux); }
+.fiche .precision { font-size: 0.85rem; color: var(--texte-doux); margin-top: 0.3rem; }
+/* Les trois chiffres d'ouverture d'une page : ce sont eux qu'on emporte si on
+   ne lit rien d'autre, et ils doivent donc se lire de loin, avant le texte.
+   L'étiquette passe AU-DESSUS du nombre — on lit « ce qui rentre » puis
+   « 417 Md € », dans cet ordre, et non un nombre dont on cherche le sens.
+
+   Comme les engagements, la frise porte ses filets sur les cartes et coupe ce
+   qui dépasse : un fond servant de trait laissait un rectangle vide dès que la
+   dernière rangée était incomplète. */
+.fiches.reperes {
+  gap: 0; margin: 2rem 0;
+  grid-template-columns: repeat(auto-fit, minmax(min(13.75rem, 100%), 1fr));
+  border-top: 1px solid var(--trait); border-bottom: 1px solid var(--trait);
+  overflow: hidden;
+}
+.fiches.reperes .fiche {
+  background: none; border: 0; border-radius: 0;
+  padding: 1.25rem 1.25rem 1.25rem 0;
+  box-shadow: 1px 0 0 var(--trait);
+  display: flex; flex-direction: column;
+}
+/* Étiquette, nombre, précision : trois rangées PARTAGÉES entre les cartes
+   d'une même ligne, pour que les nombres s'alignent quand une étiquette tient
+   sur deux lignes — « 39 390 » tombait vingt points sous « 89 » et « 28 ». Là
+   où la sous-grille n'existe pas, la colonne flexible reste. */
+@supports (grid-template-rows: subgrid) {
+  .fiches.reperes .fiche {
+    display: grid; grid-template-rows: subgrid; grid-row: span 3;
+    align-content: start;
+  }
+}
+.fiches.reperes .fiche .valeur {
+  font-size: clamp(1.75rem, 4vw, 2.5rem); line-height: 1.05; font-weight: 900;
+  letter-spacing: -0.04em; color: var(--or); order: 2;
+}
+.fiches.reperes .fiche .etiquette {
+  order: 1; font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--texte-doux); margin-bottom: 0.4rem;
+}
+.fiches.reperes .fiche .precision { order: 3; margin-top: 0.4rem; }
+/* Quelques idées, une par bloc. Elles se lisent côte à côte, de même poids :
+   c'est ce qui les distingue d'une liste, où la première l'emporte. */
+.points { display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(min(20rem, 100%), 1fr));
+          gap: 1.5rem; margin: 2rem 0; }
+.points .point { border-top: 3px solid var(--or); padding: 1rem 0 0; }
+.points .point > h3 {
+  margin: 0 0 0.4rem; font-size: 1.25rem; font-weight: 900;
+  letter-spacing: -0.02em; text-transform: uppercase;
+}
+.points .point > p { margin: 0; font-size: 1rem; color: var(--texte-doux); }
+
+/* Une question, sa réponse, le tracé qui la montre. Encadrée pour se découper :
+   une capture de ce bloc se comprend hors du site, et c'est exactement ce qu'on
+   en fait depuis que chaque carte porte sa barre de partage. */
+section.cle {
+  background: var(--fond-carte); border: 0; border-top: 3px solid var(--or);
+  border-radius: 0; padding: 1.5rem clamp(1.25rem, 3vw, 1.75rem) 1.25rem;
+  margin: 2.5rem 0;
+}
+section.cle > h3 {
+  margin: 0; font-size: clamp(1.375rem, 3vw, 1.75rem); font-weight: 900;
+  letter-spacing: -0.03em; text-transform: uppercase;
+}
+section.cle > .reponse {
+  font-size: 1.1875rem; line-height: 1.5; max-width: 46rem; margin: 0.5rem 0 0.2rem;
+  color: var(--texte-doux);
+}
+section.cle > .source {
+  font-size: 0.875rem; color: var(--texte-tres-doux); margin: 0.2rem 0 0;
+}
+/* -- la barre de partage ----------------------------------------------------
+
+   Elle est SOUS LE RÉSULTAT — sous le graphique qu'on vient de lire, sous la
+   carte qu'on vient de voir —, et non dans une page « Partager » que personne
+   ne trouve. Elle est écrite UNE fois et sert aux deux : c'est pourquoi ses
+   sélecteurs ne nomment plus la carte qui la porte.
+
+   Deux gestes, et non trois. Publier sur X, télécharger l'image et copier le
+   texte demandaient de choisir avant d'agir, et chacun des trois était
+   incomplet. Le premier bouton fait maintenant le tout ; le second reste
+   parce qu'un ordinateur ne sait ouvrir qu'un seul réseau avec un message
+   déjà écrit. */
+.partage {
+  margin: 1.25rem 0 0; padding-top: 1.125rem;
+  border-top: 3px solid var(--or);
+  display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center;
+}
+/* Les deux boutons partagent la cible tactile de 48 px. Le premier est plein —
+   c'est celui qu'on vient chercher —, le second creux. */
+.partage > .partager,
+.partage > .partager-x {
+  font: inherit; font-size: 0.9375rem; cursor: pointer;
+  min-height: 3rem; padding: 0.85rem 1.125rem;
+  border-radius: 0; display: inline-flex; align-items: center; gap: 0.5rem;
+}
+.partage > .partager {
+  font-weight: 900; letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--fond); background: var(--or); border: 2px solid var(--or);
+}
+.partage > .partager-x {
+  font-weight: 700; color: var(--texte); background: transparent;
+  border: 2px solid var(--trait-champ);
+}
+.partage > .partager:hover { opacity: 0.88; }
+.partage > .partager-x:hover { border-color: var(--or); }
+.partage > .partager[disabled] { opacity: 0.6; cursor: progress; }
+/* Le compte rendu du geste — « image enregistrée, texte copié ». Il s'écrivait
+   dans le libellé du bouton, ce qui changeait sous le doigt la cible qu'on
+   venait de toucher, et faisait disparaître le pictogramme ; il est ici, à
+   côté, et son `role="status"` le fait annoncer sans qu'on ait à y revenir. */
+.partage > .etat {
+  font-size: 0.9375rem; line-height: 1.35; color: var(--texte-doux);
+  min-width: 0; flex: 1 1 8rem;
+}
+.partage > .etat:empty { display: none; }
+/* Le repli du presse-papiers : quand le navigateur refuse la copie, le texte
+   s'affiche dans un champ sélectionnable plutôt que d'annoncer un succès qui
+   n'a pas eu lieu. Il prend toute la largeur, sous les boutons, et ne s'efface
+   pas tout seul — c'est au lecteur de le refermer. */
+.partage > .repli {
+  flex: 1 1 100%; margin: 0; font-family: inherit; font-size: 0.9375rem;
+  background: var(--fond); color: var(--texte); border: 2px solid var(--or);
+}
+.partage > .repli[hidden] { display: none; }
+section.cle > .donnees-graphique { margin-bottom: 0.6rem; }
+/* Le mot de jargon et sa définition. Tout est en ligne — le mot doit couler
+   dans sa phrase comme n'importe quel autre —, et l'enveloppe est simplement
+   `relative` pour servir de repère à la bulle posée dessous. */
+.mot { position: relative; }
+.mot > .terme {
+  /* Le bouton hérite de la phrase qui le porte, taille et graisse comprises :
+     sans cela un mot du glossaire se serait vu d'abord comme un bouton, et
+     seulement ensuite comme un mot. Seul le pointillé le signale. */
+  font: inherit; color: inherit; background: none; border: none;
+  border-bottom: 1px dotted var(--or); border-radius: 0;
+  padding: 0; margin: 0; min-height: 0; cursor: help;
+  text-transform: inherit; letter-spacing: inherit;
+  /* Un bouton centre son texte : posé sur deux lignes dans une case étroite,
+     le mot s'affichait centré sous un libellé aligné à gauche. */
+  text-align: inherit;
+}
+/* L'appel d'une bulle : un point d'interrogation, et non un mot souligné. La
+   cible tactile fait au moins 24 px de côté (WCAG 2.5.8). */
+.mot > .terme.appel {
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-left: 0.25em; padding: 0.2em; font-size: 0.95em; line-height: 1;
+  min-width: 1.5rem; min-height: 1.5rem;
+  color: var(--texte-doux); border-bottom: none; vertical-align: -0.1em;
+}
+.mot > .terme:hover, .mot > .terme[aria-expanded="true"] { color: var(--or); }
+.mot > .terme[aria-expanded="true"] { border-bottom-style: solid; }
+.mot > .bulle {
+  display: block; position: absolute; left: 0; top: calc(100% + 0.4rem);
+  z-index: 25; width: max(14rem, min(22rem, 70vw));
+  background: var(--fond-carte); color: var(--texte);
+  border: 2px solid var(--or); border-radius: 0;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.45);
+  padding: 0.7rem 0.9rem; font-size: 0.9375rem; line-height: 1.45;
+  /* Le texte de la bulle est un texte courant, quelle que soit la phrase qui
+     porte le mot : sans cela une définition posée dans un chapeau en héritait
+     la couleur, la taille et les capitales. */
+  font-weight: 400; font-style: normal; text-align: left; white-space: normal;
+  font-family: "Public Sans", system-ui, sans-serif; text-transform: none;
+  letter-spacing: 0;
+}
+.mot > .bulle[hidden] { display: none; }
+.etiquette-fiabilite {
+  display: inline-block; font-size: 0.8rem; letter-spacing: 0.06em;
+  text-transform: uppercase; font-weight: 700; padding: 0.15rem 0.5rem;
+  border-radius: 0; background: var(--fond); border: 1px solid var(--trait-champ);
+  color: var(--texte-doux);
+}
+/* Graphiques : du SVG écrit à la main, dont seules les couleurs et les tailles
+   de texte sont ici. Le tracé lui-même est dans `graphique()`. */
+.graphique { margin: 1.5rem 0 1.75rem; position: relative; }
+.graphique svg { display: block; width: 100%; height: auto; overflow: visible;
+                 touch-action: pan-y; }
+/* La figure se parcourt au clavier : les flèches y déplacent l'année lue. */
+.graphique:focus-visible { outline: 3px solid var(--or); outline-offset: 4px; }
+/* La signature, en haut à gauche du cadre. N'importe quelle capture d'écran
+   emporte donc le compte, sans rien demander au lecteur — et c'est ce qui fait
+   qu'un graphique republié reste attribué. */
+.graphique .signature {
+  fill: var(--or); font-family: inherit; font-size: 15px; font-weight: 700;
+}
+/* Le trait vertical de l'année lue, et les points posés sur chaque courbe. Ils
+   sont dessinés par `index.html` dans le `<g class="survol">` que le tracé
+   laisse vide : rien de tout cela n'est dans le HTML servi, et la page reste
+   lisible sans une ligne de script. */
+.graphique .survol .guide { stroke: var(--texte); stroke-width: 1; }
+.graphique .survol .point { stroke-width: 3; fill: var(--fond); }
+/* La lecture d'une année. Elle S'ÉCRIT DANS LA LÉGENDE : chaque entrée porte
+   une case, vide au repos, où la valeur de l'année survolée s'inscrit. Les
+   cases ont d'avance la largeur de la plus longue valeur de leur série, posée
+   par le script au rendu de la page : rien ne bouge donc au survol, ni quand
+   le pointeur sort. Une bande à part — essayée deux fois — sautait : ses
+   entrées se repliaient autrement à chaque année selon la largeur des
+   chiffres, et remplacer la légende par la bande changeait la hauteur de la
+   figure à chaque entrée et sortie du pointeur. L'année, elle, est écrite
+   dans le tracé, en haut du trait de repère.
+
+   La région `.lecture` reste : c'est ce que la synthèse vocale entend. Elle
+   n'est plus affichée. */
+.graphique .lecture {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip-path: inset(50%); white-space: nowrap;
+}
+.graphique .lecture[hidden] { display: none; }
+ul.legende .lu {
+  display: inline-block; text-align: right; font-weight: 800;
+  font-variant-numeric: tabular-nums; color: var(--texte);
+  /* Jamais comprimée ni coupée : sa largeur est celle que le script a
+     mesurée, et une case qui rétrécit ferait déborder sa valeur. */
+  flex: none; white-space: nowrap;
+}
+/* L'année survolée, en haut du trait de repère, avec le même halo que les
+   étiquettes de série. */
+.graphique .annee-lue {
+  font-family: inherit; font-size: 13px; font-weight: 800;
+  fill: var(--or); paint-order: stroke; stroke: var(--fond); stroke-width: 6px;
+  stroke-linejoin: round;
+}
+/* L'aide qui dit que les flèches marchent. Elle n'apparaît qu'au focus clavier :
+   à la souris, elle n'apprendrait rien et prendrait une ligne. */
+.graphique .aide-clavier {
+  font-size: 0.85rem; color: var(--texte-tres-doux); margin: 0.4rem 0 0;
+  visibility: hidden;
+}
+.graphique:focus-visible .aide-clavier { visibility: visible; }
+.graphique .grille { stroke: var(--trait); stroke-width: 1; }
+.graphique .axe { stroke: var(--trait-champ); stroke-width: 1; }
+.graphique .repere {
+  stroke: var(--texte-tres-doux); stroke-width: 1; stroke-dasharray: 3 4;
+}
+.graphique .courbe {
+  fill: none; stroke-width: 3;
+  stroke-linejoin: round; stroke-linecap: round;
+}
+.graphique .bande { stroke: none; }
+/* Le ruban entre deux courbes : vert quand la première passe au-dessus, rose
+   quand elle passe dessous. OPAQUE, et peint sous les courbes. Translucide, il
+   virait au gris-brun sale sur le vert profond — « il y a un problème sur la
+   couleur rouge » —, et deux aplats superposés produisaient une troisième
+   couleur qui ne figurait dans aucune légende. */
+.graphique .ecart { stroke: none; }
+.graphique .ecart.plus { fill: var(--reste); }
+.graphique .ecart.moins { fill: var(--manque); }
+/* Ses deux pastilles de légende, accolées : une seule couleur ne dirait que la
+   moitié de ce que le ruban montre. Elles portent exactement la couleur
+   peinte — sans opacité, puisque le ruban n'en a plus. */
+.pastille.ecart-plus { background: var(--reste); }
+.pastille.ecart-moins { background: var(--manque); margin-left: -0.15rem; }
+/* L'étiquette posée au bout d'une courbe, qui lui donne son nom dans le cadre :
+   plus besoin de faire l'aller-retour avec la légende pour savoir laquelle est
+   laquelle. Le halo de fond, tracé sous le glyphe, lui garde son contraste
+   quand elle passe sur une aire rose ou verte. */
+.graphique .etiquette-serie {
+  font-family: inherit; font-size: 15px; font-weight: 800;
+  paint-order: stroke; stroke: var(--fond); stroke-width: 6px;
+  stroke-linejoin: round;
+}
+.graphique .graduation {
+  fill: var(--texte-tres-doux); font-family: inherit; font-size: 13px;
+  font-weight: 600; font-variant-numeric: tabular-nums;
+}
+/* Le tableau des points du graphique. Il se range juste sous son tracé, et non
+   à la distance qui sépare deux paragraphes : c'est la même figure, dite
+   autrement. Déplié, il est borné en hauteur, et ses en-têtes de colonne
+   restent visibles pendant qu'on le parcourt. */
+.donnees-graphique, .donnees-frise, .donnees-cascade { margin: -1.4rem 0 1.7rem; }
+.donnees-graphique .defilant, .donnees-frise .defilant,
+.donnees-cascade .defilant { max-height: 24rem; overflow-y: auto; }
+.donnees-graphique table, .donnees-frise table,
+.donnees-cascade table { font-size: 0.9rem; }
+.donnees-graphique th, .donnees-graphique td,
+.donnees-frise th, .donnees-frise td,
+.donnees-cascade th, .donnees-cascade td { padding: 0.25rem 0.6rem; }
+.donnees-graphique thead th, .donnees-frise thead th,
+.donnees-cascade thead th {
+  position: sticky; top: 0; background: var(--fond-defilant);
+  box-shadow: inset 0 -2px 0 var(--or);
+}
+.donnees-graphique caption, .donnees-frise caption,
+.donnees-cascade caption { padding-bottom: 0.35rem; }
+/* La frise des flux : une colonne par année, lue de gauche à droite dans une
+   boîte qui défile. Le SVG garde sa largeur en pixels — c'est la boîte qui
+   défile, pas le dessin qui rétrécit —, sans quoi quarante-cinq années
+   tiendraient dans quarante-cinq millimètres. */
+.frise { margin: 1.5rem 0 1.75rem; }
+.frise .defilant { padding-bottom: 0.5rem; }
+.frise svg { display: block; height: auto; max-width: none; }
+.frise .titre {
+  fill: var(--texte); font-family: inherit; font-size: 14px; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.frise .graduation {
+  fill: var(--texte-tres-doux); font-family: inherit; font-size: 12px;
+  font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.frise .grille { stroke: var(--trait); stroke-width: 1; }
+.frise .noeud { fill: var(--serie-9); }
+.frise .noeud.rentre, .frise .ruban.rentre { fill: var(--serie-5); }
+.frise .noeud.sort, .frise .ruban.sort { fill: var(--serie-2); }
+.frise .ruban { opacity: 0.45; }
+.frise .manque { fill: var(--manque); }
+.frise .reste { fill: var(--reste); }
+/* La cascade : le pont d'un total à un autre, marche par marche. Comme la
+   frise, elle DÉFILE dans sa boîte au lieu de rétrécir — huit colonnes et
+   leurs étiquettes en biais ne se lisent pas dans la largeur d'un téléphone —,
+   et sa légende reste dessous, hors de la boîte qui défile. */
+.cascade { margin: 1.5rem 0 1.75rem; }
+.cascade .defilant { padding-bottom: 0.5rem; }
+.cascade svg { display: block; width: 100%; height: auto; }
+.cascade .grille { stroke: var(--trait); stroke-width: 1; }
+.cascade .axe { stroke: var(--trait-champ); stroke-width: 1; }
+/* Le trait de liaison n'est pas une donnée : il relie le sommet d'une marche
+   au pied de la suivante, et le pointillé dit qu'il ne mesure rien. */
+.cascade .liaison {
+  stroke: var(--texte-tres-doux); stroke-width: 1; stroke-dasharray: 3 3;
+}
+.cascade .marche.monte { fill: var(--manque); }
+.cascade .marche.descend { fill: var(--reste); }
+/* Une marche nulle n'est ni l'un ni l'autre : elle est mesurée, et sans effet.
+   Peinte en vert, elle se serait lue comme une baisse. */
+.cascade .marche.nulle { fill: var(--texte-tres-doux); }
+.cascade .marche.total { fill: var(--serie-9); }
+.cascade .graduation {
+  fill: var(--texte-tres-doux); font-family: inherit; font-size: 12px;
+  font-weight: 600; font-variant-numeric: tabular-nums;
+}
+/* Le chiffre de la marche est posé hors de la barre, sur la grille : il porte
+   donc un liseré de la couleur du fond, faute de quoi une graduation lui
+   passait au travers. */
+.cascade .valeur {
+  fill: var(--texte); font-family: inherit; font-size: 14px; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  paint-order: stroke; stroke: var(--fond); stroke-width: 4px;
+  stroke-linejoin: round;
+}
+.cascade .valeur.monte { fill: var(--manque); }
+.cascade .valeur.descend { fill: var(--reste); }
+.cascade .valeur.nulle { fill: var(--texte-tres-doux); }
+.cascade .etiquette {
+  fill: var(--texte-doux); font-family: inherit; font-size: 13px;
+}
+.cascade .etiquette.total { fill: var(--texte); font-weight: 700; }
+/* La lecture au survol : le cadre de la marche visée, et ce qu'elle vaut, dit
+   en toutes lettres sous la figure. Les marches qu'on ne vise pas s'effacent
+   d'un quart — assez pour que l'œil trouve la bonne, pas assez pour qu'il
+   perde la forme de la cascade. */
+.cascade .survol .cadre {
+  fill: none; stroke: var(--texte); stroke-width: 2;
+}
+.cascade:has(.survol .cadre) .marche { opacity: 0.55; }
+.cascade:has(.survol .cadre) .marche.visee { opacity: 1; }
+.cascade .lecture {
+  margin-top: 0.5rem; font-size: 0.9375rem; font-weight: 600;
+  color: var(--texte); min-height: 1.5rem;
+}
+.cascade .lecture[hidden] { display: none; }
+.cascade .lecture .part { color: var(--texte-doux); font-weight: 400; }
+.cascade .aide-clavier {
+  margin: 0.35rem 0 0; font-size: 0.8125rem; color: var(--texte-tres-doux);
+  visibility: hidden;
+}
+.cascade:focus-within .aide-clavier { visibility: visible; }
+.cascade .defilant:focus-visible { outline: 3px solid var(--or); outline-offset: 4px; }
+ul.legende {
+  list-style: none; margin: 0.75rem 0 0; padding: 0;
+  display: flex; flex-wrap: wrap; gap: 0.4rem 1.5rem; font-size: 0.9375rem;
+}
+ul.legende li { display: flex; align-items: baseline; gap: 0.45rem; }
+.pastille {
+  display: inline-block; flex: none;
+  width: 0.75rem; height: 0.75rem; border-radius: 0;
+}
+/* Ce qu'un tableau ne peut pas porter dans ses cellules sans devenir illisible
+   — la phrase qui explique une ligne. */
+dl.gloses { margin: 0.8rem 0 0; font-size: 0.95rem; }
+dl.gloses dt { font-weight: 700; margin-top: 0.7rem; }
+dl.gloses dd { margin: 0.15rem 0 0; padding: 0; color: var(--texte-doux); }
+ul.serree { margin: 0.5rem 0; padding-left: 1.2rem; max-width: 46rem; }
+ul.serree li { margin: 0.3rem 0; }
+
+/* -- les cartes à publier ---------------------------------------------------
+
+   1200 × 675, la boîte de X et de LinkedIn. Ce qui s'affiche ici n'est plus
+   l'image : c'est son APERÇU. La carte a longtemps été rendue à sa taille
+   réelle dans un cadre qui défilait, parce qu'il fallait la capturer à l'écran
+   pour l'avoir ; elle se télécharge maintenant d'un bouton, composée sur une
+   toile aux vraies dimensions, et l'aperçu n'a plus qu'à ressembler à ce qu'on
+   emportera. Il se réduit donc avec sa colonne, dans le rapport exact de 16/9.
+
+   Toutes les longueurs de la carte sont en `cqw` — centièmes de la largeur du
+   cadre —, c'est-à-dire la valeur en pixels du modèle divisée par douze. C'est
+   la seule façon d'obtenir une réduction FIDÈLE : l'`em` aurait fallu composer
+   les tailles les unes dans les autres, et les marges d'une ligne de 52 px ne
+   se disent pas dans la même unité que celles d'une ligne de 28. Une valeur en
+   pixels précède chaque taille de police, pour un navigateur qui ne connaîtrait
+   pas les requêtes de conteneur : la carte y sera petite, jamais illisible. */
+.cadre-carte {
+  container-type: inline-size;
+  background: var(--fond-carte); padding: 0.5rem; min-width: 0;
+}
+.carte-partage {
+  aspect-ratio: 1200 / 675; box-sizing: border-box;
+  background: var(--fond); color: var(--texte); padding: 4.667cqw;
+  display: flex; flex-direction: column; justify-content: space-between;
+  font-family: "Public Sans", system-ui, sans-serif;
+}
+.carte-partage.claire { background: var(--creme); color: var(--sur-creme); }
+.carte-partage .surtitre {
+  margin: 0; font-size: 13px; font-size: 2.167cqw; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--or);
+  line-height: 1;
+}
+.carte-partage.claire .surtitre { color: var(--sur-creme-accent); }
+.carte-partage .chiffre {
+  font-size: 75px; font-size: 12.5cqw; line-height: 0.85; font-weight: 900;
+  letter-spacing: -0.05em; color: var(--or);
+}
+/* Le déficit : un chiffre qui s'écrit en toutes lettres — « 2,4 points de
+   PIB » —, donc plus long, donc plus petit, et de la couleur de l'aire du
+   graphique qui le montre. */
+.carte-partage.deficit .chiffre { font-size: 56px; font-size: 9.333cqw;
+                                  color: var(--manque); }
+/* L'appel au simulateur ne porte pas un chiffre mais une question : elle se
+   pose en serif, sur la carte claire, et la phrase dessous prend le poids que
+   le chiffre avait. */
+.carte-partage.appel .chiffre {
+  font-family: "Instrument Serif", Georgia, serif;
+  font-size: 48px; font-size: 8cqw; line-height: 0.95; font-weight: 400;
+  letter-spacing: 0; color: inherit;
+}
+.carte-partage.appel .phrase {
+  font-family: "Public Sans", system-ui, sans-serif;
+  font-size: 20px; font-size: 3.333cqw; line-height: 1.3; font-weight: 700;
+}
+.carte-partage .phrase {
+  margin-top: 1.833cqw; font-family: "Instrument Serif", Georgia, serif;
+  font-size: 26px; font-size: 4.333cqw; line-height: 1.12; color: var(--texte);
+}
+.carte-partage.claire .phrase { color: var(--sur-creme); }
+.carte-partage .detail {
+  margin-top: 1.667cqw; max-width: 83.333cqw;
+  font-size: 14px; font-size: 2.333cqw; line-height: 1.45;
+  color: var(--texte-doux);
+}
+.carte-partage.claire .detail { color: var(--sur-creme-doux); }
+/* Le pied : le compte et l'adresse. C'est lui qui fait qu'une image republiée
+   dit encore d'où elle vient — et il est doublé, dans l'image téléchargée, par
+   un filigrane posé en travers du cadre. */
+.carte-partage .pied {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 2cqw; border-top: 1px solid var(--trait); padding-top: 2.167cqw;
+  font-size: 16px; font-size: 2.667cqw; font-weight: 700;
+}
+.carte-partage.claire .pied { border-top-color: var(--creme-trait); }
+.carte-partage .pied .compte { color: var(--or); }
+.carte-partage.claire .pied .compte { color: var(--sur-creme-accent); }
+.carte-partage .pied .adresse {
+  color: var(--texte-tres-doux); font-weight: 400;
+  font-size: 13px; font-size: 2.167cqw;
+}
+.carte-partage.claire .pied .adresse { color: var(--sur-creme-doux); }
+/* Les figures de la page Partager. Deux par ligne dès qu'il y a la place : les
+   cartes se comparent, et une seule colonne en faisait une page à dérouler.
+   `min(100%, …)` borne la piste sur les écrans étroits, où une largeur
+   minimale plus large que la page déborderait. */
+.cartes { display: grid; gap: 2.25rem; margin-top: 1.75rem;
+          grid-template-columns: repeat(auto-fit, minmax(min(100%, 32rem), 1fr)); }
+.cartes > figure { margin: 0; min-width: 0; }
+/* La légende NOMME la carte, et se lit avant elle : c'est ce qui permet de
+   choisir laquelle publier sans les regarder toutes. */
+.cartes > figure > figcaption {
+  margin: 0 0 0.6rem; font-size: 0.875rem; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--texte-tres-doux);
+}
+
+footer {
+  width: calc(100% - 2 * var(--marge)); max-width: calc(var(--largeur) - 2 * var(--marge));
+  margin: 4rem auto 0; padding: 1.5rem 0 5rem;
+  border-top: 1px solid var(--trait);
+  font-size: 0.9rem; color: var(--texte-tres-doux);
+}
+footer a { color: var(--or); }
+.erreur {
+  border-left: 3px solid var(--manque); background: var(--fond-carte);
+  padding: 0.85rem 1.1rem; margin: 1.5rem 0;
+}
+pre.json {
+  background: var(--fond-carte); border: 1px solid var(--trait); border-radius: 0;
+  padding: 0.9rem 1.1rem; overflow-x: auto; max-height: 26rem; overflow-y: auto;
+  font-size: 0.85rem; line-height: 1.45;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+.chargement { text-align: center; padding: 4rem 1rem; color: var(--texte-doux); }
+.chargement .jauge {
+  height: 6px; width: min(24rem, 80%); margin: 1.5rem auto 0;
+  background: var(--fond-carte); overflow: hidden;
+}
+.chargement .jauge > span {
+  display: block; height: 100%; width: 30%; background: var(--or);
+  animation: glisse 1.4s ease-in-out infinite;
+}
+@keyframes glisse {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(333%); }
+}
+body.calcul-en-cours main { opacity: 0.45; transition: opacity 0.2s; }
+/* Ce qui n'est lu que par les synthèses vocales : la description d'un
+   graphique, l'annonce d'un changement de page. */
+.hors-ecran {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+
+/* Téléphone. Tout ce qui est fluide s'est déjà réduit tout seul ; ne restent
+   ici que les choses qui doivent CHANGER DE FORME — une rangée qui passe en
+   colonne, une bande de lecture qui ne peut plus tenir cinq cellules de front. */
+@media (max-width: 48rem) {
+  /* Les engagements passent à une colonne, et leurs filets verticaux
+     deviennent horizontaux : un filet à gauche ne sépare plus rien quand
+     tout est empilé. */
+  .engagements .grille { grid-template-columns: 1fr; }
+  .engagements .engagement,
+  .engagements .engagement:nth-child(even) {
+    padding: 1.5rem 0 0; box-shadow: none; border-top: 1px solid var(--trait);
+  }
+  .engagements .engagement:first-child { border-top: 0; }
+}
+@media (max-width: 34rem) {
+  body { font-size: 1rem; }
+  /* Le bandeau ne colle plus : à neuf onglets sur deux ou trois rangées, il
+     mangeait un tiers de la hauteur d'un téléphone, et c'est cette hauteur
+     qu'on vient chercher. */
+  header.bandeau { position: static; }
+  header.bandeau nav { margin-left: -0.5rem; margin-right: -0.5rem; }
+  header.bandeau nav a { padding: 0 0.5rem; font-size: 0.75rem; }
+  .plan a { padding: 0 0.5rem; font-size: 0.8125rem; }
+  .affiche { padding: 2rem 0 1.5rem; }
+  .scenario .entete { flex-direction: column; gap: 0.15rem; }
+  /* L'intitulé reprend sa hauteur de texte. En colonne, `flex: 1 1 14rem` ne
+     réserve plus une largeur mais une HAUTEUR : chaque scénario portait donc
+     224 px de vide entre son titre et son montant. */
+  .scenario .titre { flex: 0 1 auto; max-width: 100%; }
+  /* Le montant passe sous l'intitulé, aligné à gauche comme lui : `margin-left:
+     auto` le poussait à droite de l'écran dès qu'il fut seul, et il flottait au
+     milieu du vide. Les libellés se replient, les sommes jamais — un montant
+     coupé en deux lignes ne se lit plus —, et la rangée passe à la ligne quand
+     même cela ne suffit pas. */
+  .scenario .montant { justify-content: flex-start; flex-wrap: wrap;
+                       column-gap: 0.9rem; row-gap: 0.3rem; max-width: 100%;
+                       margin-left: 0; }
+  .scenario .chiffre { align-items: flex-start; white-space: normal;
+                       min-width: 0; max-width: 100%; }
+  .scenario .chiffre .somme { white-space: nowrap; }
+  /* Les tableaux du détail portent jusqu'à six colonnes, et un téléphone leur
+     donne 358 points : un demi-point de moins et des marges plus serrées leur
+     rendent un cinquième de leur hauteur. */
+  table { font-size: 0.9rem; }
+  th, td { padding: 0.5rem 0.45rem; }
+  /* Le retrait d'une section repliée coûte 26 points de largeur à ce qu'elle
+     contient : de quoi couper une colonne de chiffres. */
+  details.section > .dedans { padding-left: 0.6rem; }
+  /* Les frises passent à une colonne (les engagements l'ont fait à 48 rem,
+     avec leurs filets). */
+  .fiches { grid-template-columns: 1fr; }
+  .fiches.reperes { grid-template-columns: 1fr; }
+  .fiches.reperes .fiche {
+    padding: 1rem 0; box-shadow: none; border-top: 1px solid var(--trait);
+  }
+  .fiches.reperes .fiche:first-child { border-top: 0; }
+  ol.gestes { font-size: 1.25rem; }
+  ol.gestes > li { grid-template-columns: 3rem 1fr; gap: 0.875rem; }
+  ol.gestes > li > .rang { font-size: 2.5rem; }
+  .paire { gap: 2rem; margin: 2.5rem 0; }
+  section.cle { padding: 1.25rem 1rem 1rem; }
+  /* Chaque bouton de partage prend sa ligne : deux de front sur 358 points se
+     serraient sous la cible tactile de 44 px. */
+  .partage > .partager,
+  .partage > .partager-x { flex: 1 1 100%; justify-content: center; }
+  .partage > .etat { flex: 1 1 100%; }
+  /* La bulle du glossaire quitte le fil du texte et se pose en bas de l'écran,
+     sur toute la largeur. Une boîte flottante ancrée sur un mot qui peut se
+     trouver au bord de l'écran en déborderait ; et une boîte posée DANS le fil
+     coupait la phrase en deux. Fixée en bas, elle ne déplace rien et reste
+     dans la vue quel que soit l'endroit où l'on a touché. */
+  .mot { position: static; }
+  .mot > .bulle {
+    position: fixed; left: 0.75rem; right: 0.75rem; bottom: 0.75rem;
+    top: auto; width: auto; max-width: none; z-index: 30;
+    font-size: 1rem; padding: 0.9rem 1rem;
+  }
+  form .grille { gap: 0.9rem; }
+  /* Le SVG se réduisait avec la page, et ses textes, exprimés en unités du
+     viewBox, avec lui : grossis à 24 unités sans que les marges du repère ne
+     suivent, ils se chevauchaient — « k€ » sur « 1 500 », les décennies
+     collées. Le tracé ne descend donc plus sous 30 rem et DÉFILE dans sa
+     figure : à 360 points il est réduit d'un tiers, non de moitié, et dix-huit
+     unités y font douze pixels sans rien recouvrir. */
+  .graphique { overflow-x: auto; -webkit-overflow-scrolling: touch; container-type: inline-size; }
+  .graphique > svg { min-width: 30rem; }
+  /* La légende et l'aide restent sous l'œil quand le tracé défile : posées
+     dans la figure qui défile, elles partaient avec lui, et l'on ne voyait
+     plus que les valeurs, sans les noms. */
+  .graphique > figcaption, .graphique > .aide-clavier {
+    position: sticky; left: 0; width: 100cqw; box-sizing: border-box;
+  }
+  /* Les tableaux des dispositifs — trois colonnes dont deux de phrases — ne
+     tiennent pas dans 300 points : chacun décidait seul, selon son contenu,
+     de se comprimer à un mot par ligne ou de déborder. Ils défilent tous, à
+     la même largeur. */
+  .dispositifs table { min-width: 30rem; }
+  /* Même règle pour tout tableau d'au moins quatre colonnes : comprimé à
+     300 points, il mettait un mot par ligne et une rangée sur douze. */
+  .defilant table:has(thead th:nth-child(4)) { min-width: 34rem; }
+  /* L'aperçu d'une carte à publier, réduit à la largeur d'un téléphone,
+     tombait à cinq pixels de texte. Il garde 36 rem et défile dans sa
+     figure : on lit ce qu'on va publier. */
+  .cartes > figure { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .cadre-carte { min-width: 36rem; }
+  .graphique .graduation { font-size: 18px; }
+  .graphique .etiquette-serie { font-size: 20px; stroke-width: 7px; }
+  .graphique .annee-lue { font-size: 18px; }
+  .graphique .signature { font-size: 26px; }
+  /* La cascade suit la même règle, et pour la même raison : réduite à la
+     largeur d'un téléphone, treize unités de viewBox y feraient six pixels.
+     Elle défile donc à 40 rem — plus large que les 30 du graphique, parce
+     qu'elle porte huit colonnes ET huit étiquettes en biais —, et ses textes
+     ne sont grossis que du peu qui manque. MARGE_BAS_CASCADE est taillée pour
+     les loger à cette taille-là. */
+  .cascade svg { min-width: 40rem; }
+  .cascade .graduation { font-size: 16px; }
+  .cascade .valeur { font-size: 18px; stroke-width: 5px; }
+  .cascade .etiquette { font-size: 16px; }
+}
+
+/* Mouvement réduit : la jauge d'attente glisse sans fin, et une animation qui
+   ne s'arrête jamais déclenche nausées et migraines chez qui y est sensible
+   (WCAG 2.2.2 et 2.3.3). Le système le signale ; on l'écoute. La jauge reste,
+   immobile et pleine : elle dit encore « ça travaille », sans bouger. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .chargement .jauge > span { width: 100%; }
+}
+
+/* Impression : le lecteur qui imprime une simulation veut les chiffres, et il
+   les veut en noir sur blanc — une affiche vert profond pleine page coûterait
+   une cartouche pour ne rien dire de plus. Tout est donc reteinté à
+   l'impression, par les variables : c'est le seul endroit où elles servent
+   deux fois. */
+@media print {
+  :root {
+    --fond: #fff; --fond-carte: #fff; --fond-appui: #fff;
+    --texte: #000; --texte-doux: #333; --texte-tres-doux: #444;
+    --trait: #999; --trait-champ: #666;
+    --accent: #000; --or: #000; --creme: #fff; --sur-creme: #000;
+    --sur-creme-doux: #333; --sur-creme-accent: #000; --creme-trait: #999;
+  }
+  header.bandeau nav, .evitement { display: none; }
+  header.bandeau {
+    background: #fff; color: #000; border-bottom: 1px solid #000;
+    margin-bottom: 1rem; position: static;
+  }
+  /* Ni la lecture au survol — il n'y a pas de pointeur sur du papier —, ni les
+     boutons de partage : la page imprimée EST déjà l'image. */
+  .graphique .lecture, .graphique .aide-clavier,
+  .cascade .lecture, .cascade .aide-clavier, section.cle > .partage {
+    display: none;
+  }
+  body { background: #fff; color: #000; font-size: 11pt; overflow-x: visible; }
+  /* Les capitales massives de l'affiche redeviennent des titres : à 76 px sur
+     du papier, un titre mange le tiers de la première page. */
+  h1 { font-size: 20pt; }
+  h2 { font-size: 15pt; }
+  .chapeau, .affiche .chapeau { font-size: 12pt; }
+  .defilant { overflow: visible; background: none; }
+  .carte, .note, table, .graphique, .cascade, .scenario, section.cle,
+  .encadre {
+    break-inside: avoid;
+  }
+  /* Le mot du glossaire s'imprime comme le reste de la phrase : ni bouton, ni
+     soulignement pointillé, qui ne renverraient sur le papier à rien qu'on
+     puisse ouvrir. Sa définition ne s'imprime pas : sur une page de chiffres
+     elle ferait une incise de trois lignes au milieu d'un paragraphe. */
+  .mot > .terme { border-bottom: none; }
+  .mot > .bulle { display: none; }
+  a[href^="http"]::after { content: " (" attr(href) ")"; font-size: 0.85em; }
+}
