@@ -726,7 +726,7 @@ def _cas_type(cas) -> str:
              ["<strong>Écart</strong>", badge,
               f"<strong>{signe} {eur(abs(cas.ecart))}</strong> "
               f"({signe} {abs(cas.part) * 100:.0f} %)"]],
-            ["texte", "long", "nombre"],
+            ["texte", "texte long", "nombre"],
             f"{cas.nom} : aujourd'hui et avec le socle")
         + f"<p>{cas.lecture}</p>"
         + (g.note(f"<p><strong>Réserve.</strong> {cas.reserve}</p>")
@@ -1218,6 +1218,121 @@ def protections():
 
 
 # -- 7. les nouveaux résidents -----------------------------------------------
+#
+# CETTE PAGE PORTE LE DROIT APPLICABLE, troisième espèce de phrase du site après
+# la doctrine et le chiffrage.
+#
+# La note range la convergence sur dix ans parmi ses points de vigilance (§20.5)
+# et la renvoie à une expertise « au regard du droit constitutionnel et
+# européen ». Le site reprenait ce renvoi tel quel : il annonçait dix ans pour
+# tous, puis mentionnait en une incise des « exceptions prévues par la loi ou
+# par les engagements européens et internationaux ».
+#
+# Ces exceptions ne sont pas une incise. Elles décident du périmètre réel de la
+# mesure, et elles sont connues — les textes existent, les décisions sont
+# rendues. Les écrire soi-même, c'est garder la main sur ce que la mesure
+# devient. Les laisser découvrir en campagne, c'est voir la mesure phare
+# s'effondrer devant un juge au pire moment.
+#
+# LE SITE NE DONNE PAS UNE CONSULTATION JURIDIQUE et ne s'en donne pas l'air. Il
+# cite les textes, il cite les décisions, il dit ce qui reste — et il laisse
+# l'expertise à qui la fait.
+
+#: Les textes qui s'opposent au barème, et ce qu'il en reste pour chacun.
+#: L'ordre va du plus fermé au plus discutable : ce qui est acquis d'abord.
+EXCEPTIONS = [
+    ("Réfugiés statutaires",
+     "Convention de Genève, art. 23",
+     "Les États « accorderont aux réfugiés résidant régulièrement sur leur "
+     "territoire le même traitement en matière d'assistance et de secours "
+     "publics qu'à leurs nationaux ». Un socle monétaire de subsistance est de "
+     "l'assistance publique au sens le plus direct.",
+     "Rien. Accès au régime commun dès la reconnaissance du statut."),
+    ("Bénéficiaires de la protection subsidiaire",
+     "Directive 2011/95, art. 29",
+     "L'assistance sociale nécessaire est due comme aux nationaux. Le "
+     "paragraphe 2 permet de la limiter aux « prestations essentielles » pour "
+     "la seule protection subsidiaire.",
+     "Peu. Un socle qui garantit la subsistance sort difficilement des "
+     "prestations essentielles."),
+    ("Travailleurs de l'Union européenne, et leur famille",
+     "Règlement 492/2011, art. 7 § 2",
+     "Un travailleur d'un autre État membre bénéficie des mêmes avantages "
+     "sociaux que les travailleurs nationaux, dès le premier jour. La notion "
+     "d'avantage social est entendue largement par la Cour de justice.",
+     "Rien. Accès immédiat dès lors que la qualité de travailleur est établie."),
+    ("Résidents de longue durée, après cinq ans",
+     "Directive 2003/109, art. 11 — CJUE, Kamberaj, 2012",
+     "Égalité de traitement en matière d'assistance sociale. La limitation aux "
+     "« prestations essentielles » que l'article 11 § 4 autorise ne peut pas "
+     "écarter une prestation qui assure une existence digne à qui manque de "
+     "ressources.",
+     "Rien au-delà de la cinquième année. Les paliers « 6 à 8 ans » et "
+     "« 9 à 10 ans » du barème n'ont plus de support."),
+    ("Ressortissants du Maroc, d'Algérie, de Tunisie et de Turquie, salariés",
+     "Accords d'association — CJCE, Kziber, 1991",
+     "Les clauses d'égalité de traitement en matière de sécurité sociale de ces "
+     "accords sont d'effet direct : elles peuvent être invoquées directement "
+     "devant le juge national.",
+     "Discuté pour un socle non contributif ; acquis pour la part de "
+     "contributif que le socle absorberait."),
+    ("Citoyens de l'Union économiquement inactifs",
+     "Directive 2004/38, art. 24 § 2 — CJUE, Dano et Alimanovic",
+     "C'est la seule exception qui joue <strong>en faveur</strong> du "
+     "barème : l'assistance "
+     "sociale peut être refusée à un citoyen de l'Union qui ne remplit pas les "
+     "conditions de séjour de la directive.",
+     "Le barème peut s'appliquer — mais au plus jusqu'au séjour permanent, "
+     "acquis à cinq ans."),
+    ("Titulaires d'une convention bilatérale de sécurité sociale",
+     "Une quarantaine de conventions en vigueur",
+     "Chacune a son champ propre, et certaines couvrent des prestations que le "
+     "socle absorberait.",
+     "À expertiser convention par convention. C'est un travail, pas une "
+     "incise."),
+]
+
+#: Ce que les juges ont déjà dit. Les deux premières décisions portent sur des
+#: prestations que la réforme absorbe précisément — le minimum vieillesse et le
+#: RSA —, ce qui les rend difficilement contournables.
+JURISPRUDENCE = [
+    ("Conseil constitutionnel, 89-269 DC, 22 janvier 1990",
+     "L'allocation supplémentaire du Fonds national de solidarité — l'ancêtre "
+     "de l'ASPA — était réservée aux Français. Le Conseil a censuré : exclure "
+     "les étrangers résidant régulièrement en France « méconnaît le principe "
+     "constitutionnel d'égalité ». Un étranger en séjour stable et régulier a "
+     "droit à la protection sociale.",
+     "Le socle senior remplace l'ASPA, qui descend de cette allocation. La "
+     "décision porte donc directement sur le troisième étage de la réforme."),
+    ("Conseil constitutionnel, 2011-137 QPC, 17 juin 2011",
+     "Le Conseil a <strong>validé</strong> la condition de cinq ans de "
+     "résidence pour le RSA. "
+     "Mais il faut lire son motif : la différence de traitement est « en "
+     "rapport direct avec l'objet de la loi » parce que <em>le RSA a pour objet "
+     "l'insertion professionnelle</em> et que la stabilité de la présence sur "
+     "le territoire conditionne cette insertion.",
+     "C'est le point faible du barème, et il est contre-intuitif. Un revenu "
+     "<strong>universel</strong> n'a pas d'objet spécifique — c'est sa "
+     "définition et sa force. Le raisonnement exact qui a sauvé les cinq ans du "
+     "RSA ne se transpose donc pas à dix ans sur un socle universel."),
+    ("Conseil constitutionnel, 2023-863 DC, 25 janvier 2024",
+     "La loi « pour contrôler l'immigration » conditionnait les aides au "
+     "logement, l'APA et les prestations familiales à cinq ans de résidence "
+     "régulière, ou trente mois d'affiliation par le travail. L'article a été "
+     "censuré — mais comme <strong>cavalier législatif</strong>, c'est-à-dire "
+     "sur la procédure.",
+     "Le fond n'a donc pas été jugé. Ni validé, ni condamné : la question reste "
+     "entièrement ouverte, et c'est la seule bonne nouvelle de cette page."),
+    ("Cour européenne des droits de l'homme, Koua Poirrez c. France, 2003",
+     "La France a été condamnée pour avoir refusé l'allocation aux adultes "
+     "handicapés à un résident régulier au motif de sa nationalité. Une "
+     "différence de traitement fondée sur la seule nationalité exige des "
+     "« considérations très fortes ».",
+     "La note écarte l'exclusion « purement nationalitaire » (§16), ce qui est "
+     "la bonne intuition. Mais un barème qui trie par durée de séjour produit "
+     "un effet très proche, et c'est sous cet angle qu'il sera attaqué."),
+]
+
 
 def nouveaux_residents():
     principe = (
@@ -1242,6 +1357,15 @@ def nouveaux_residents():
         + g.note("<p>Pas de droit complet sans rattachement durable et effectif, mais pas "
                  "de contribution complète sans droits correspondants.</p>")
         + g.source("Note de doctrine, §16 — Accès des étrangers.")
+        + "<p>Ces « exceptions prévues par la loi ou par les engagements européens "
+        "et internationaux » tiennent ici en une incise. Elles ne sont pas une "
+        "incise : <strong>ce sont elles qui décident du périmètre réel de la "
+        "mesure.</strong> Les sections suivantes les écrivent, parce qu'un "
+        "barème annoncé pour tous puis rabaissé par un juge en pleine campagne "
+        "emporte la mesure et la crédibilité de tout le reste avec elle.</p>"
+        + g.droit("Le site cite les textes et les décisions ; il ne tient pas "
+                  "lieu d'expertise juridique, que la note appelle elle-même "
+                  "au §20.5.")
     )
 
     bareme = (
@@ -1264,12 +1388,156 @@ def nouveaux_residents():
         "paiement régulier de l'impôt et des cotisations, carte de résident, diplôme "
         "obtenu en France suivi d'une insertion professionnelle, création d'entreprise ou "
         "emploi de salariés.</p>"
-        "<p>Le régime applicable aux citoyens de l'Union européenne doit respecter les "
-        "engagements européens de la France. Le principe demeure que l'accès au socle "
-        "complet suppose un droit au séjour régulier et un rattachement réel à la société "
-        "française : les séjours courts ou dépourvus d'ancrage économique et social "
-        "n'ouvrent pas automatiquement le régime complet.</p>"
         + g.source("Note de doctrine, §16.")
+        + g.note(
+            "<p><strong>Les deux derniers paliers de ce tableau sont ceux qui "
+            "tiennent le moins.</strong> Au-delà de cinq ans de séjour régulier, "
+            "un ressortissant d'un pays tiers relève du statut de résident de "
+            "longue durée, qui ouvre l'égalité de traitement — et un citoyen de "
+            "l'Union a acquis le séjour permanent. Les lignes « 6 à 8 ans » et "
+            "« 9 à 10 ans » n'ont donc, pour l'essentiel, plus personne à qui "
+            "s'appliquer. <a href=\"#exceptions\">Voir pourquoi</a></p>",
+            "vigilance")
+        + g.droit("Directive 2003/109 relative aux résidents de longue durée, "
+                  "art. 11 ; directive 2004/38, art. 16, sur le séjour "
+                  "permanent acquis après cinq ans.")
+    )
+
+    exceptions = (
+        "<p>Sept publics échappent au barème, ou n'y sont soumis que "
+        "partiellement, en vertu de textes que la France ne peut pas écarter "
+        "seule. Six jouent contre la mesure ; un seul joue pour elle, et il est "
+        "signalé comme tel.</p>"
+        + g.tableau(
+            ["Public", "Texte", "Ce qu'il impose", "Ce qui reste du barème"],
+            [[public, f"<em>{texte}</em>", impose, reste]
+             for public, texte, impose, reste in EXCEPTIONS],
+            ["texte", "texte", "texte long", "texte long"],
+            "Les publics auxquels le barème ne peut pas s'appliquer, "
+            "et ce qu'il en reste")
+        + g.note(
+            "<p><strong>Ce qui reste du barème, une fois ces textes appliqués : "
+            "les ressortissants de pays tiers, sur leurs cinq premières années "
+            "de séjour régulier, hors réfugiés, hors travailleurs, hors "
+            "conventions bilatérales.</strong> C'est un périmètre réel, et il "
+            "est défendable. Mais ce n'est pas « dix ans pour les étrangers », "
+            "et l'écart entre les deux formulations est exactement ce qu'un "
+            "adversaire exploitera si nous le lui laissons.</p>", "vigilance")
+        + g.droit("Convention de Genève de 1951, art. 23 ; directive 2011/95, "
+                  "art. 29 ; règlement 492/2011, art. 7 § 2 ; règlement "
+                  "883/2004, art. 4 ; directive 2003/109, art. 11 ; directive "
+                  "2004/38, art. 24 § 2 ; accords d'association "
+                  "euro-méditerranéens.")
+    )
+
+    juges = (
+        "<p>Quatre décisions encadrent déjà la question. Deux portent sur des "
+        "prestations que la réforme absorbe précisément, ce qui les rend "
+        "difficiles à contourner.</p>"
+        + "".join(
+            g.depliant(titre, f"<p>{corps}</p>"
+                       + g.note(f"<p><strong>Pour nous.</strong> {portee}</p>"),
+                       identifiant="jp-" + ancre(titre))
+            for titre, corps, portee in JURISPRUDENCE)
+        + g.note(
+            "<p>La ligne de défense la plus solide n'est donc pas la durée, "
+            "c'est <strong>l'objet</strong>. Le Conseil constitutionnel a "
+            "validé une condition de résidence parce que la prestation avait un "
+            "but auquel la résidence se rattachait directement. Un socle "
+            "universel n'a pas ce but ; en revanche, la <strong>contribution "
+            "qui monte en même temps que le droit</strong> — la réciprocité que "
+            "la note met au cœur du §16 — est un argument que la jurisprudence "
+            "n'a jamais eu à examiner. C'est là qu'il faut porter l'effort, pas "
+            "sur le nombre d'années.</p>", "vigilance")
+        + g.droit("Décisions citées : 89-269 DC ; 2011-137 QPC ; 2023-863 DC ; "
+                  "CEDH, Koua Poirrez c. France, n° 40892/98.")
+    )
+
+    portee = (
+        "<p>Reste à situer la proposition par rapport à ce qui s'est déjà tenté. "
+        "C'est le meilleur test de réalisme disponible, et il est sévère.</p>"
+        + g.tableau(
+            ["Texte", "Durée proposée", "Prestations visées", "Sort"],
+            [["Loi immigration, décembre 2023",
+              "5 ans",
+              "Aides au logement, APA, prestations familiales",
+              "Censurée en janvier 2024, sur la procédure"],
+             ["Proposition de loi adoptée par le Sénat, mars 2025",
+              "2 ans",
+              "Prestations familiales, APA, aides au logement",
+              "Transmise à l'Assemblée. Exemptions prévues pour les étrangers "
+              "en emploi et les personnes protégées par le droit international"],
+             ["Note de doctrine du parti, §16",
+              "10 ans",
+              "Le socle, c'est-à-dire l'ensemble des prestations monétaires "
+              "générales",
+              "Exemptions renvoyées à une incise"]],
+            ["texte", "nombre", "texte long", "texte long"],
+            "Les trois tentatives, et leur sort")
+        + "<p>La proposition sénatoriale de mars 2025 est le point de "
+        "comparaison le plus utile : elle a été écrite par une commission des "
+        "lois <em>pour survivre au contrôle</em>, elle vise moins de "
+        "prestations, et elle s'arrête à deux ans en prévoyant ses exemptions. "
+        "La note en propose dix, sur un périmètre plus large, sans les écrire.</p>"
+        + g.points([
+            ("Annoncer le périmètre réel",
+             "Dire « cinq ans pour les ressortissants de pays tiers, hors "
+             "réfugiés, hors travailleurs, hors conventions » est moins "
+             "spectaculaire que « dix ans », mais c'est tenable devant un juge "
+             "et devant un contradicteur. L'inverse ne l'est pas."),
+            ("Porter l'argument sur la réciprocité",
+             "La contribution qui monte avec le droit est l'idée neuve du §16, "
+             "et aucune décision ne l'a encore examinée. C'est la meilleure "
+             "chance de la mesure, et elle est aujourd'hui noyée dans un "
+             "tableau de pourcentages."),
+            ("Traiter le socle senior à part",
+             "La décision de 1990 porte sur l'ancêtre de l'ASPA. Appliquer le "
+             "barème de convergence au socle senior, c'est rouvrir exactement "
+             "la question qui a déjà été tranchée, et dans le sens contraire."),
+            ("Chiffrer avant de promettre",
+             "La note dit elle-même que ce mécanisme n'est pas le cœur du "
+             "financement (§16). Si son périmètre réel se réduit aux cinq "
+             "premières années d'un public restreint, son rendement est "
+             "marginal — et il faut alors décider s'il vaut le coût politique "
+             "et juridique qu'il porte."),
+        ])
+        + g.droit("Loi n° 2024-42 du 26 janvier 2024 et décision 2023-863 DC ; "
+                  "proposition de loi n° 299 (2024-2025), adoptée par le Sénat "
+                  "le 18 mars 2025.")
+    )
+
+    compte = (
+        "<p>Le <strong>compte individuel de solidarité</strong> est le "
+        "mécanisme par lequel la contribution excédant les droits immédiats est "
+        "créditée puis restituée à l'accès au régime commun. C'est l'idée la "
+        "plus originale du §16, et celle qui résiste le moins à sa propre "
+        "doctrine.</p>"
+        + g.points([
+            ("Il crée une créance sur l'État",
+             "Un crédit individuel, suivi sur dix ans, mobilisable à la "
+             "naturalisation. Il faut en fixer le régime : est-il revalorisé, "
+             "transmissible, remboursable au départ, opposable en cas de "
+             "changement de statut ?"),
+            ("Il contredit le principe 6",
+             "La note interdit de recréer les dispositifs que la réforme "
+             "supprime, et n'admet d'exception que pour les vulnérabilités "
+             "spécifiques (§20.6). Un compte individuel géré sur dix ans pour "
+             "un public restreint est précisément un dispositif séparé de plus."),
+            ("Son assiette se réduit avec les exceptions",
+             "Si le barème ne s'applique plus qu'aux cinq premières années d'un "
+             "public restreint, le compte porte sur peu de personnes et peu "
+             "d'années. Son coût de gestion peut dépasser ce qu'il déplace."),
+        ])
+        + g.note(
+            "<p>Deux issues, et il vaut mieux choisir que subir : <strong>soit "
+            "le compte est assumé</strong> et il lui faut un régime juridique "
+            "écrit, <strong>soit la réciprocité passe par la contribution "
+            "elle-même</strong> — on ne prélève pas ce qui n'ouvre pas de "
+            "droits — et le compte disparaît. La seconde est plus simple, plus "
+            "conforme au principe 6, et tout aussi fidèle à la formule du "
+            "§16.</p>", "vigilance")
+        + g.source("Note de doctrine, §16 — compte individuel de solidarité ; "
+                   "§20.6 — risque de reconstitution du millefeuille.")
     )
 
     hors = (
@@ -1290,12 +1558,6 @@ def nouveaux_residents():
             "<p>Ce mécanisme n'est pas le cœur du financement de la réforme : c'est une "
             "clause de soutenabilité, de réciprocité et d'acceptabilité. Il évite à la "
             "fois le guichet ouvert immédiat et la contribution sans droits.</p>")
-        + g.note(
-            "<p>La note identifie ici un risque juridique : la transition sur dix ans "
-            "devra être expertisée au regard du droit constitutionnel et européen. La "
-            "doctrine reste fondée sur la résidence effective, la contribution, l'accès "
-            "progressif aux droits et la réciprocité — <strong>non sur une exclusion "
-            "purement nationalitaire</strong>.</p>", "vigilance")
         + g.source("Note de doctrine, §16 et §20.5 — Risque juridique.")
     )
 
@@ -1329,16 +1591,21 @@ def nouveaux_residents():
     return page(
         "nouveaux-residents.html",
         f"Nouveaux résidents — {g.TITRE_SITE}",
-        "Droits et devoirs progressifs sur dix ans : le barème de convergence vers le "
-        "socle complet, le compte individuel de solidarité, et les protections "
-        "maintenues hors du revenu universel.",
+        "Droits et devoirs progressifs : le barème de convergence, les sept publics "
+        "auxquels le droit européen et international interdit de l'appliquer, la "
+        "jurisprudence constitutionnelle, et le périmètre réel qui en résulte.",
         "Nouveaux résidents",
         "Les droits et les devoirs<br>avancent ensemble",
         "Un socle immédiat et entier pour les citoyens français résidant en France ; pour "
-        "les résidents étrangers, une convergence sur dix ans où l'accès aux droits et la "
-        "contribution montent du même pas.",
+        "les résidents étrangers, une convergence où l'accès aux droits et la "
+        "contribution montent du même pas — et le périmètre exact que le droit laisse à "
+        "cette convergence.",
         [("principe", "Le principe", principe),
          ("bareme", "Le barème de convergence", bareme),
+         ("exceptions", "À qui le barème ne peut pas s'appliquer", exceptions),
+         ("juges", "Ce que les juges ont déjà tranché", juges),
+         ("portee", "Le périmètre réel, et ce qu'il faut en faire", portee),
+         ("compte", "Le compte individuel de solidarité", compte),
          ("hors", "Ce qui reste hors du barème", hors),
          ("controle", "Résidence effective et contrôle", controle)])
 
@@ -1381,7 +1648,7 @@ def financement():
         "ligne porte sa source.</p>"
         + g.tableau(
             ["Poste", "Montant annuel", "Ce que c'est"],
-            lignes, ["long", "nombre", "long"],
+            lignes, ["texte long", "nombre", "texte long"],
             "Du coût brut au coût net du socle adulte")
         + g.note(
             "<p><strong>Les prestations familiales n'apparaissent pas dans ce "
@@ -1445,7 +1712,7 @@ def financement():
                if c.socle == ch.SOCLE_NEUTRALITE else
                "Haut de la fourchette citée par la note.")]
              for c in ch.calibrations()],
-            ["texte", "nombre", "nombre", "nombre", "long"],
+            ["texte", "nombre", "nombre", "nombre", "texte long"],
             "Ce que coûte chaque niveau de socle")
         + g.note(
             f"<p>{ch.contrainte_structurelle()}</p>", "vigilance")
@@ -1470,7 +1737,7 @@ def financement():
                 [[etage.libelle, etage.montant, md(etage.cout_net),
                   etage.consequence]
                  for etage in ch.etages_seniors()],
-                ["long", "texte", "nombre", "long"],
+                ["texte long", "texte", "nombre", "texte long"],
                 "Les deux lectures possibles du socle senior")
             + "<p>Tant que ce n'est pas tranché, un lecteur qui applique le "
             f"socle adulte lit une baisse de {eur(ch.ASPA_PERSONNE_SEULE)} à "
@@ -1495,7 +1762,7 @@ def financement():
                            - ch.CONTREPARTIE_FAMILIALE_TOTALE)),
                   ecart_monoparental(forfait)]
                  for forfait in ch.FORFAITS_COMPARES],
-                ["texte", "nombre", "nombre", "long"],
+                ["texte", "nombre", "nombre", "texte long"],
                 "Ce que coûte chaque niveau de forfait enfant")
             + "<p>La lecture est sans échappatoire : le forfait qui équilibre "
             f"le bloc familial est de {eur(ch.FORFAIT_NEUTRE_BUDGET)}, celui "
@@ -1514,7 +1781,7 @@ def financement():
                 ["Lecture", "Ce qu'elle produit"],
                 [[titre, corps]
                  for titre, corps in ch.lectures_de_la_contribution(b)],
-                ["texte", "long"],
+                ["texte", "texte long"],
                 "Les deux lectures ouvertes par la note")
             + "<p>C'est le seul point de ce chiffrage qu'un calcul ne peut pas "
             "fermer : il appelle une décision. Tant qu'elle n'est pas écrite, "
@@ -1811,12 +2078,20 @@ def questions():
               g.source("Note de doctrine, §14 et §15."), identifiant="q-assurance"),
         g.cle("Tout le monde y a droit dès son arrivée en France ?",
               "Non. Le socle est attaché à la résidence effective, et l'accès complet "
-              "d'un ressortissant étranger est acquis après dix ans de résidence "
-              "régulière, la contribution de solidarité montant au même rythme. La "
-              "naturalisation ouvre le régime commun. Les protections fondamentales — "
-              "asile, soins urgents, protection de l'enfance, hébergement d'urgence — "
-              "restent hors de ce barème.",
-              g.source("Note de doctrine, §16."), identifiant="q-etrangers"),
+              "d'un ressortissant étranger se construit par une convergence où le droit "
+              "et la contribution montent du même pas. La naturalisation ouvre le régime "
+              "commun. Les protections fondamentales — asile, soins urgents, protection "
+              "de l'enfance, hébergement d'urgence — restent hors de ce barème.",
+              "<p>La note fixe cette convergence à dix ans. Le droit européen et "
+              "international en réduit le périmètre réel : les réfugiés, les "
+              "travailleurs de l'Union et les résidents de longue durée relèvent "
+              "de l'égalité de traitement, et le site l'écrit plutôt que de le "
+              "laisser découvrir. "
+              '<a href="nouveaux-residents.html#exceptions">Voir les sept publics '
+              "concernés et ce qui reste du barème</a></p>",
+              g.source("Note de doctrine, §16 ; le périmètre de droit est propre "
+                       "à ce site."),
+              identifiant="q-etrangers"),
         g.cle("Un Français installé à l'étranger le touche-t-il ?",
               "Non : la nationalité seule ne suffit pas. Le socle est attaché à la "
               "résidence effective en France, et c'est l'un des critères que le contrôle "

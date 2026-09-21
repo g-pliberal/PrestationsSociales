@@ -39,17 +39,23 @@ coût net, et n'écrivait nulle part ce qu'il était. **Il posait la question et
 laissait la réponse à quelqu'un d'autre.** C'est ce que `scripts/chiffrage.py`
 répare.
 
-Le dépôt porte depuis **deux espèces de phrases**, et elles ne partagent jamais
+Le dépôt porte depuis **trois espèces de phrases**, et elles ne partagent jamais
 un paragraphe :
 
 | | D'où elle vient | Comment elle se cite |
 | --- | --- | --- |
 | **Doctrine** | La note, 22 sections | « Note de doctrine, §18 » |
 | **Chiffrage** | Barèmes publics 2026, dépenses constatées | « Chiffrage — … » |
+| **Droit applicable** | Textes européens et internationaux, jurisprudence | « Droit applicable — … » |
 
-Le chiffrage n'engage pas le parti : il montre ce à quoi la note s'engagerait si
-on la calibrait de telle ou telle façon. Il dit ses hypothèses à chaque fois, et
-`scripts/verifier.py` refuse une page qui chiffrerait sans le signaler.
+Ni le chiffrage ni le droit n'engagent le parti, et ils n'ont pas le même statut
+l'un que l'autre : **le chiffrage dit ce que la note coûterait, le droit dit ce
+qu'elle ne peut pas faire.** Tous deux disent leurs sources à chaque fois, et
+`scripts/verifier.py` refuse une page qui dépasserait la note sans le signaler.
+
+Le site n'est pas une consultation juridique et ne s'en donne pas l'air : il cite
+les textes et les décisions, et laisse l'expertise à qui la fait — celle que la
+note appelle elle-même au §20.5.
 
 **Tout y est calculé, rien n'est recopié.** Changer une constante de
 `chiffrage.py` change les onze pages d'un coup, et aucun nombre du site ne peut
@@ -67,7 +73,7 @@ n'existe qu'une fois, dans `construire_site.py`.
 | `jeunes.html` | Le socle dès 18 ans, les APL étudiantes, les bourses | §6, §13, §20.3 |
 | `familles.html` | Le crédit familial, le bouclier monoparental, le couple | §7, §8, §9, §11 |
 | `protections.html` | Handicap, logement, chômage, retraites : ce qui reste à part | §10, §12, §14, §15 |
-| `nouveaux-residents.html` | La convergence sur dix ans, la résidence effective, le contrôle | §16, §17, §20.5 |
+| `nouveaux-residents.html` | La convergence, **les sept publics auxquels le droit interdit de l'appliquer**, la jurisprudence, le périmètre réel | §16, §17, §20.5 + droit applicable |
 | `financement.html` | Coût brut, **coût net**, taux de contribution, point de bascule, les trois montants qui manquent | §18, §20.1 + chiffrage |
 | `calendrier.html` | Les cinq années de bascule et les six points de vigilance | §19, §20 |
 | `questions.html` | Dix objections, le message politique, le glossaire | §21, §22 |
