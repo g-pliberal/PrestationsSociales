@@ -80,6 +80,14 @@ le barème ne bouge pas.
 Ces décisions sont celles du parti, pas des lectures de la note, et le site les
 signale comme telles partout où elles apparaissent.
 
+**Ce qui reste à décider tient désormais en une question.** Le plafond a refermé
+le niveau du socle et le forfait enfant sur une même enveloppe —
+24.7 Md€ par an — qui s'achète une seule fois. Le
+chiffrage établit qu'à euro dépensé, le forfait enfant réduit environ quatre
+fois plus les pertes que le socle, parce qu'il se concentre sur 13,8 millions
+d'enfants là où le socle se répartit sur 54,7 millions de personnes. La décision
+appartient au parti ; `financement.html` la rend tranchable.
+
 Ni le chiffrage ni le droit n'engagent le parti, et ils n'ont pas le même statut
 l'un que l'autre : **le chiffrage dit ce que la note coûterait, le droit dit ce
 qu'elle ne peut pas faire.** Tous deux disent leurs sources à chaque fois, et
@@ -103,7 +111,7 @@ n'existe qu'une fois, dans `construire_site.py`.
 | `simulateur.html` | Le calculateur d'illustration, et la comparaison au système actuel | §5, §18 |
 | `cas-types.html` | 9 situations chiffrées, avant et après, **perdants compris**, Mayotte et pension médiane incluses | chiffrage |
 | `jeunes.html` | Le socle dès 18 ans, les APL étudiantes, les bourses | §6, §13, §20.3 |
-| `familles.html` | Le crédit familial, le bouclier monoparental, le couple | §7, §8, §9, §11 |
+| `familles.html` | Le crédit familial, le bouclier monoparental, **combien vaut le forfait enfant**, le couple | §7, §8, §9, §11 + chiffrage |
 | `protections.html` | Handicap, logement, chômage, retraites : ce qui reste à part, et **le complément vieillesse** | §10, §12, §14, §15 + chiffrage |
 | `nouveaux-residents.html` | La convergence, **les sept publics auxquels le droit interdit de l'appliquer**, la jurisprudence, le périmètre réel, et **un contrôle sans fichier nouveau** | §16, §17, §20.5 + droit applicable |
 | `financement.html` | Coût brut, **coût net** des deux étages, taux, point de bascule, **les deux décisions du parti** et le plafond constitutionnel qu'elles imposent | §18, §20.1 + chiffrage et droit |

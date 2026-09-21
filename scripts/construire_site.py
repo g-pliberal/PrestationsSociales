@@ -44,9 +44,17 @@ def md(milliards: float) -> str:
     return texte + f"{FINE}Md€"
 
 
+#: Le signe moins typographique. Python écrit les négatifs avec un trait
+#: d'union, qui est plus court, plus haut, et ne s'aligne pas sur la barre du
+#: plus dans une colonne de chiffres. Sur une page qui affiche des écarts, la
+#: différence se voit.
+MOINS = "\u2212"
+
+
 def eur(montant: float) -> str:
-    """Un montant en euros, arrondi à l'euro."""
-    return f"{montant:,.0f}".replace(",", FINE) + f"{FINE}€"
+    """Un montant en euros, arrondi à l'euro, avec un vrai signe moins."""
+    texte = f"{montant:,.0f}".replace(",", FINE) + f"{FINE}€"
+    return texte.replace("-", MOINS, 1) if montant < 0 else texte
 
 
 def pourcent(part: float) -> str:
@@ -92,6 +100,20 @@ def en_lettres(nombre: int, majuscule: bool = False) -> str:
     """Un petit nombre, écrit. Au-delà de douze, le chiffre fait l'affaire."""
     mot = LETTRES[nombre] if nombre < len(LETTRES) else str(nombre)
     return mot.capitalize() if majuscule else mot
+
+
+#: Les deux cas types que l'enveloppe restante peut déplacer, repérés par leur
+#: nom plutôt que par un rang écrit à la main : insérer un cas type devant eux
+#: décalerait silencieusement les chiffres de la page du financement.
+def _indice_cas(fragment: str) -> int:
+    for rang, cas in enumerate(ch.cas_types()):
+        if fragment in cas.nom:
+            return rang
+    raise KeyError(f"cas type introuvable : {fragment}")
+
+
+INDICE_CELIBATAIRE = _indice_cas("Célibataire sans emploi")
+INDICE_MONOPARENTALE = _indice_cas("Mère seule")
 
 
 def ecart_monoparental(forfait: float) -> str:
@@ -1241,6 +1263,51 @@ def familles():
                    "modestes et monoparentales.")
     )
 
+    arbitrage = (
+        "<p>Le forfait enfant est le dernier montant que la note laisse "
+        "ouvert, et il porte le sort des familles que le §20.2 désigne comme "
+        "le risque social principal de la réforme. Il n'est plus ouvert vers "
+        "le haut : le financement du socle laisse une enveloppe bornée, et "
+        "elle s'achète une seule fois.</p>"
+        + g.tableau(
+            ["Forfait enfant", "Ce qu'il fait à la famille monoparentale",
+             "Ce qu'il suppose"],
+            [[eur(200) + " / mois",
+              eur(ch.cas_types(forfait=200)[INDICE_MONOPARENTALE].ecart)
+              + " par mois",
+              "Un chiffre rond, sans justification à opposer."],
+             [eur(ch.FORFAIT_NEUTRE_BUDGET) + " / mois "
+              '<span class="badge proposition">retenu</span>',
+              eur(ch.cas_types()[INDICE_MONOPARENTALE].ecart) + " par mois",
+              "Le forfait qui coûte exactement ce que le crédit familial "
+              "remplace : il ne dépense rien de plus."],
+             [eur(ch.forfait_finance_par(ch.marge_disponible())) + " / mois",
+              "<strong>"
+              + eur(ch.ecart_apres_usage(ch.usages_de_la_marge()[1],
+                                         INDICE_MONOPARENTALE))
+              + " par mois</strong>",
+              "Toute l'enveloppe restante mise ici, et rien sur le socle. "
+              'C\'est le maximum atteignable.'],
+             [eur(500) + " / mois",
+              eur(ch.cas_types(forfait=500)[INDICE_MONOPARENTALE].ecart)
+              + " par mois",
+              "<strong>Hors d'atteinte</strong> : au-delà du plafond "
+              "constitutionnel."]],
+            ["texte", "nombre", "texte long"],
+            "Ce que chaque niveau de forfait fait à la famille monoparentale")
+        + g.note(
+            "<p><strong>À euro dépensé, le forfait enfant est environ quatre "
+            "fois plus efficace que le socle</strong> pour réduire les pertes, "
+            "parce qu'il se concentre sur treize millions huit cent mille "
+            "enfants là où le socle se répartit sur cinquante-cinq millions de "
+            "personnes. C'est l'argument le plus fort en faveur d'un forfait "
+            "élevé, et il ne dépend d'aucune préférence politique. "
+            '<a href="financement.html#enveloppe">Voir l\'enveloppe</a></p>')
+        + g.repere("Écarts recalculés pour chaque niveau de forfait à partir "
+                   "du cas type de la famille monoparentale sans emploi, aux "
+                   "barèmes 2026.")
+    )
+
     couple = (
         "<p>Le socle reste individualisé : il ne pénalise pas la mise en couple et ne "
         "crée pas de dépendance économique entre conjoints. Se mettre en ménage ne fait "
@@ -1284,6 +1351,7 @@ def familles():
         "la bascule.",
         [("credit", "Le crédit familial par enfant", credit),
          ("bouclier", "Le bouclier des familles monoparentales", bouclier),
+         ("arbitrage", "Combien vaut le forfait enfant", arbitrage),
          ("couple", "Couple, mariage, pensions alimentaires", couple)])
 
 
@@ -2144,8 +2212,10 @@ def financement():
         "écrits : la contribution "
         '<a href="#ajout">s\'ajoute à l\'impôt sur le revenu</a>, et le socle '
         'senior <a href="#retraites">est servi à tous</a>. Reste le '
-        "troisième, et son ordre de grandeur est tel qu'aucun chiffrage du "
-        "bloc familial ne tient tant qu'il n'est pas fixé.</p>"
+        "troisième — et il n'est plus ouvert vers le haut : "
+        '<a href="#enveloppe">l\'enveloppe disponible</a> le borne à '
+        f"{eur(ch.forfait_finance_par(ch.marge_disponible()))} par mois, "
+        "au-delà desquels le plafond constitutionnel est franchi.</p>"
         + g.depliant(
             "Le forfait enfant — le montant qui décide du sort des monoparentales",
             "<p>Le crédit familial remplace "
@@ -2167,9 +2237,14 @@ def financement():
                 "Ce que coûte chaque niveau de forfait enfant")
             + "<p>La lecture est sans échappatoire : le forfait qui équilibre "
             f"le bloc familial est de {eur(ch.FORFAIT_NEUTRE_BUDGET)}, celui "
-            "qui protège les familles monoparentales est nettement au-dessus, "
-            "et l'écart entre les deux est le prix de la promesse faite au "
-            "§7.</p>",
+            "qui rendrait la famille monoparentale strictement neutre est "
+            "au-dessus du plafond, et le maximum atteignable est de "
+            f"{eur(ch.forfait_finance_par(ch.marge_disponible()))} — soit "
+            f"{eur(ch.ecart_apres_usage(ch.usages_de_la_marge()[1], INDICE_MONOPARENTALE))} "
+            "par mois pour cette famille, contre "
+            f"{eur(ch.cas_types()[INDICE_MONOPARENTALE].ecart)} aujourd'hui. "
+            'C\'est <a href="#enveloppe">tout ce que l\'enveloppe permet</a>, '
+            "et c'est beaucoup.</p>",
             "forfait-enfant")
         + g.repere("Montants remplacés par le crédit familial : CNAF et "
                    "dépenses fiscales.")
@@ -2443,6 +2518,64 @@ def financement():
                    "est une décision du parti.")
     )
 
+    enveloppe = (
+        "<p>Les deux questions qui restaient ouvertes — le niveau du socle et "
+        "le forfait enfant — <strong>n'en font plus qu'une</strong>. Tant que "
+        "le plafond n'était pas calculé, chacune était ouverte vers le haut. "
+        "Les deux décisions prises les ont refermées sur une même enveloppe : "
+        "ce qui sépare la calibration retenue du taux maximal.</p>"
+        + g.engagements([
+            (md(ch.marge_disponible()), "L'enveloppe qui reste",
+             f"Entre les {pourcent_precis(ch.boucler().taux)} de la "
+             f"calibration retenue et les "
+             f"{pourcent_precis(ch.taux_maximal_constitutionnel())} que le "
+             "seuil des deux tiers autorise."),
+            ("1", "Le nombre de fois où elle s'achète",
+             "Mise sur le socle, elle ne l'est pas sur le forfait enfant. "
+             "C'est ce qui rend l'arbitrage tranchable."),
+        ])
+        + "<p>Voici ce qu'elle achète, et l'écart entre les deux colonnes est "
+        "le résultat le plus utile de tout ce chiffrage.</p>"
+        + g.tableau(
+            ["Usage de l'enveloppe", "Socle", "Forfait enfant",
+             "Le célibataire sans emploi", "La famille monoparentale"],
+            [[usage.libelle, eur(usage.socle), eur(usage.forfait),
+              f"{eur(ch.ecart_apres_usage(usage, INDICE_CELIBATAIRE))}",
+              f"<strong>{eur(ch.ecart_apres_usage(usage, INDICE_MONOPARENTALE))}"
+              "</strong>"]
+             for usage in ch.usages_de_la_marge()],
+            ["texte long", "nombre", "nombre", "nombre", "nombre"],
+            "Ce que l'enveloppe achète, selon où on la met")
+        + g.note(
+            "<p><strong>Le forfait enfant est environ quatre fois plus "
+            "efficace que le socle, à euro dépensé.</strong> La raison est "
+            "arithmétique et sans appel : le socle se répartit sur "
+            "cinquante-cinq millions de personnes, le forfait sur "
+            "treize millions huit cent mille enfants. Mettre toute l'enveloppe "
+            "sur le forfait fait passer la famille monoparentale de "
+            f"{eur(ch.cas_types()[INDICE_MONOPARENTALE].ecart)} à "
+            f"{eur(ch.ecart_apres_usage(ch.usages_de_la_marge()[1], INDICE_MONOPARENTALE))} "
+            "par mois — c'est-à-dire refermer presque entièrement ce que la "
+            "note désigne elle-même comme son risque social principal "
+            "(§20.2).</p>")
+        + "<p>Il faut dire aussi ce que l'enveloppe <strong>n'achète pas</strong>. "
+        "Le célibataire sans emploi reste perdant dans les trois colonnes : "
+        f"le rendre neutre demanderait un socle de {eur(ch.SOCLE_NEUTRALITE)}, "
+        "très au-delà du plafond. Ce cas type ne se referme pas par le "
+        "calibrage — il se referme en réformant le barème de l'impôt, ce qui "
+        "est un autre chapitre, ou il s'assume.</p>"
+        + g.note(
+            "<p><strong>Cet arbitrage n'est pas tranché ici.</strong> Le "
+            "chiffrage le rend décidable ; la décision appartient au parti, "
+            "comme les deux précédentes. Ce qui est acquis, c'est qu'il n'y a "
+            "plus de troisième voie : l'enveloppe est bornée, elle s'achète "
+            "une fois, et son emploi le plus efficace est connu.</p>",
+            "vigilance")
+        + g.repere("Enveloppe calculée comme l'écart entre le taux retenu et "
+                   "le taux maximal, appliqué à l'assiette large. Les écarts "
+                   "par cas type sont recalculés pour chaque calibration.")
+    )
+
     return page(
         "financement.html",
         f"Financement — {g.TITRE_SITE}",
@@ -2464,6 +2597,7 @@ def financement():
          ("ajout", "La contribution s'ajoute à l'impôt", ajout),
          ("marginal", "Ce que ça fait au sommet du barème", marginal),
          ("retraites", "Ce que ça fait aux retraités", retraites),
+         ("enveloppe", "L'enveloppe qui reste, et ce qu'elle achète", enveloppe),
          ("progressivite", "D'où vient la progressivité", progressivite)],
         tete=reperes)
 
@@ -2669,6 +2803,24 @@ def questions():
               g.source("Note de doctrine, §16 ; le périmètre de droit est propre "
                        "à ce site."),
               identifiant="q-etrangers"),
+        g.cle("Qu'est-ce qui reste à décider ?",
+              "Une seule chose : où mettre ce qu'il reste. Le financement du socle "
+              "laisse une enveloppe bornée par le plafond constitutionnel, et elle "
+              "s'achète une fois — sur le socle, ou sur le forfait enfant, pas sur les "
+              "deux. À euro dépensé, le forfait enfant réduit environ quatre fois plus "
+              "les pertes, parce qu'il se concentre sur les enfants là où le socle se "
+              "répartit sur tous les adultes.",
+              "<p>Mis entièrement sur le forfait enfant, il ferait passer la "
+              "famille monoparentale de "
+              f"{eur(ch.cas_types()[INDICE_MONOPARENTALE].ecart)} à "
+              f"{eur(ch.ecart_apres_usage(ch.usages_de_la_marge()[1], INDICE_MONOPARENTALE))} "
+              "par mois : c'est refermer presque entièrement le risque social "
+              "que la note désigne elle-même comme principal. "
+              '<a href="financement.html#enveloppe">Voir l\'enveloppe et ses '
+              "trois usages</a></p>",
+              g.repere("Enveloppe calculée entre le taux retenu et le taux "
+                       "maximal compatible avec le seuil des deux tiers."),
+              identifiant="q-enveloppe"),
         g.cle("La contribution remplace-t-elle l'impôt sur le revenu ?",
               "Non, elle s'y ajoute. Le barème de l'impôt sur le revenu reste ce qu'il "
               "est, et la contribution de solidarité vient au-dessus, au même taux pour "

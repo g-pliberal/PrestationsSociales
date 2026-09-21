@@ -947,3 +947,81 @@ def projeter(regle: Indexation, socle_mensuel: float = SOCLE_CIBLE,
             part_du_seuil=socle / seuil,
             taux=taux_initial * croissance / reference))
     return projections
+
+
+# -- 11. l'enveloppe qui reste -----------------------------------------------
+#
+# LES DEUX ARBITRAGES QUI RESTENT N'EN FONT PLUS QU'UN.
+#
+# Tant que le plafond n'était pas calculé, le niveau du socle et le forfait
+# enfant étaient deux questions séparées, chacune ouverte vers le haut. Les
+# deux décisions du parti — la contribution s'ajoute à l'impôt, le socle senior
+# est servi à tous — les ont refermées sur une même enveloppe : ce qui reste
+# entre la calibration retenue et le taux maximal constitutionnel.
+#
+# Cette enveloppe s'achète UNE FOIS. Mise sur le socle, elle ne l'est pas sur
+# le forfait, et réciproquement. C'est ce qui transforme deux questions vagues
+# en un arbitrage tranchable.
+
+
+def marge_disponible(socle_mensuel: float = SOCLE_CIBLE) -> float:
+    """Ce qui reste à dépenser avant le plafond, en Md€ par an."""
+    return (taux_maximal_constitutionnel()
+            - boucler(socle_mensuel).taux) * ASSIETTE_LARGE
+
+
+def socle_finance_par(marge_milliards: float,
+                      socle_mensuel: float = SOCLE_CIBLE) -> float:
+    """Le socle mensuel qu'atteint une enveloppe entièrement mise là."""
+    beneficiaires = POPULATION_18_64 + POPULATION_65_PLUS
+    return socle_mensuel + marge_milliards * MILLIARD / (beneficiaires * 12)
+
+
+def forfait_finance_par(marge_milliards: float,
+                        forfait_mensuel: float = None) -> float:
+    """Le forfait enfant qu'atteint une enveloppe entièrement mise là."""
+    if forfait_mensuel is None:
+        forfait_mensuel = FORFAIT_ILLUSTRATION
+    return forfait_mensuel + marge_milliards * MILLIARD / (ENFANTS * 12)
+
+
+@dataclass(frozen=True)
+class Usage:
+    """Une façon de dépenser l'enveloppe, et ce qu'elle produit."""
+    libelle: str
+    socle: float
+    forfait: float
+    effet: str
+
+
+def usages_de_la_marge(socle_mensuel: float = SOCLE_CIBLE) -> list[Usage]:
+    """Les trois façons de dépenser l'enveloppe, et leur effet sur les cas types.
+
+    Le partage retenu pour la troisième est la moitié-moitié, non parce qu'elle
+    serait optimale, mais parce qu'elle montre que l'arbitrage est continu :
+    entre les deux bornes, tout est possible, et rien n'est gratuit.
+    """
+    marge = marge_disponible(socle_mensuel)
+    return [
+        Usage("Tout sur le socle",
+              socle_finance_par(marge, socle_mensuel),
+              FORFAIT_ILLUSTRATION,
+              "Le célibataire sans emploi perd moins, tous les adultes "
+              "reçoivent plus, et la famille monoparentale reste où elle est."),
+        Usage("Tout sur le forfait enfant",
+              socle_mensuel,
+              forfait_finance_par(marge),
+              "La famille monoparentale se rapproche de la neutralité sans "
+              "l'atteindre, et rien ne change pour les personnes seules."),
+        Usage("Moitié-moitié",
+              socle_finance_par(marge / 2, socle_mensuel),
+              forfait_finance_par(marge / 2),
+              "Chacun des deux cas types perdants progresse d'un peu moins de "
+              "la moitié de ce qu'il aurait gagné dans la colonne qui le "
+              "concerne."),
+    ]
+
+
+def ecart_apres_usage(usage: Usage, indice: int) -> float:
+    """L'écart d'un cas type sous un usage donné de l'enveloppe."""
+    return cas_types(socle=usage.socle, forfait=usage.forfait)[indice].ecart
