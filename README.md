@@ -80,13 +80,23 @@ le barème ne bouge pas.
 Ces décisions sont celles du parti, pas des lectures de la note, et le site les
 signale comme telles partout où elles apparaissent.
 
-**Ce qui reste à décider tient désormais en une question.** Le plafond a refermé
-le niveau du socle et le forfait enfant sur une même enveloppe —
-24.7 Md€ par an — qui s'achète une seule fois. Le
-chiffrage établit qu'à euro dépensé, le forfait enfant réduit environ quatre
-fois plus les pertes que le socle, parce qu'il se concentre sur 13,8 millions
-d'enfants là où le socle se répartit sur 54,7 millions de personnes. La décision
-appartient au parti ; `financement.html` la rend tranchable.
+**4. La calibration retenue est 575 € de socle et
+330 € de forfait enfant.** Le plafond avait refermé ces deux
+questions sur une même enveloppe, qui ne s'achète qu'une fois. L'arbitrage en
+dépense 20 Md€
+sur 25 et garde le reste : les trois
+situations qui perdent progressent toutes les trois, aucune n'est sacrifiée, et
+il subsiste une marge sous le seuil de censure.
+
+Tout mettre sur le forfait enfant aurait presque refermé le cas de la famille
+monoparentale, mais au prix du salarié au SMIC — qui aurait payé le taux plus
+élevé sans rien recevoir. Pour un programme dont la promesse centrale est que le
+travail paie toujours, c'est le seul arbitrage vraiment interdit.
+
+La note donne une fourchette de 500 à 600 € (§4) et une cible de
+550 € ; `SOCLE_CIBLE` et `SOCLE_RETENU` sont deux constantes
+distinctes dans `chiffrage.py`, parce que l'une est de la doctrine et l'autre une
+décision du parti.
 
 Ni le chiffrage ni le droit n'engagent le parti, et ils n'ont pas le même statut
 l'un que l'autre : **le chiffrage dit ce que la note coûterait, le droit dit ce

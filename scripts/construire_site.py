@@ -72,6 +72,17 @@ def pourcent_precis(part: float) -> str:
     return f"{part * 100:.1f}".replace(".", ",") + f"{FINE}%"
 
 
+def pourcent_fin(part: float) -> str:
+    """Une part, à deux décimales. Pour les colonnes où le seuil se joue là.
+
+    Le tableau de l'arbitrage compare des prélèvements marginaux dont deux
+    tombent à 66,67 % et 66,69 % : arrondis à la décimale, ils s'affichent tous
+    deux « 66,7 % », dont l'un porte un badge « dépasse » et l'autre non. Le
+    lecteur croit alors à une erreur, et il a raison de le croire.
+    """
+    return f"{part * 100:.2f}".replace(".", ",") + f"{FINE}%"
+
+
 def ancre(texte: str) -> str:
     """Une ancre stable, déduite d'un intitulé.
 
@@ -114,6 +125,7 @@ def _indice_cas(fragment: str) -> int:
 
 INDICE_CELIBATAIRE = _indice_cas("Célibataire sans emploi")
 INDICE_MONOPARENTALE = _indice_cas("Mère seule")
+INDICE_SMICARD = _indice_cas("Célibataire au SMIC")
 
 
 def ecart_monoparental(forfait: float) -> str:
@@ -128,7 +140,8 @@ def ecart_monoparental(forfait: float) -> str:
 # site les répète et qu'une valeur répétée à quinze endroits finit par ne plus
 # être la même partout. Ce sont des ORDRES DE GRANDEUR DE CADRAGE, et le site le
 # dit chaque fois qu'il les emploie.
-SOCLE_CIBLE = 550          # euros par mois, cible de régime stabilisé
+SOCLE_CIBLE = 550          # euros par mois, cible de régime stabilisé (note, §4)
+SOCLE_RETENU = ch.SOCLE_RETENU   # euros par mois, la calibration du parti
 SOCLE_MARCHE = 500         # euros par mois, première marche de la transition
 SOCLE_ANNUEL = 6600        # euros par an, l'exemple chiffré de la note (§18)
 #: Le même, écrit à la française : espace fine insécable des milliers, et
@@ -207,10 +220,11 @@ def accueil():
         "creme")
 
     chiffres = g.engagements([
-        (f"{SOCLE_CIBLE}&nbsp;€",
-         "Le socle mensuel visé pour chaque adulte, versé sans condition de ressources.",
-         f"C'est la cible de régime stabilisé. La réforme démarre par une première "
-         f"marche autour de {SOCLE_MARCHE}&nbsp;€ par mois, le temps de vérifier le "
+        (f"{SOCLE_RETENU}&nbsp;€",
+         "Le socle mensuel versé à chaque adulte, sans condition de ressources.",
+         f"C'est la calibration retenue, à l'intérieur de la fourchette de la note "
+         f"— {SOCLE_MARCHE} à 600&nbsp;€ — et la réforme démarre par une première "
+         f"marche autour de {SOCLE_MARCHE}&nbsp;€, le temps de vérifier le "
          "bouclage budgétaire. Le socle est individuel : il ne dépend ni du conjoint, "
          "ni du foyer, ni du logement."),
         ("18 ans",
@@ -398,7 +412,7 @@ def accueil():
 
 def socle():
     reperes = g.fiches([
-        ("Socle mensuel visé", f"{SOCLE_CIBLE}&nbsp;€",
+        ("Socle mensuel retenu", f"{SOCLE_RETENU}&nbsp;€",
          f"Première marche autour de {SOCLE_MARCHE}&nbsp;€ pendant la transition."),
         ("Âge d'ouverture", "18 ans", "Sans condition de ressources ni de parcours."),
         ("Condition", "Résider",
@@ -609,7 +623,7 @@ def socle():
 
     prix = (
         "<p>Reste la question que personne ne posera poliment : un socle de "
-        f"{eur(ch.SOCLE_CIBLE)} achète-t-il la même chose à Fort-de-France "
+        f"{eur(ch.SOCLE_RETENU)} achète-t-il la même chose à Fort-de-France "
         "qu'à Limoges ? Non. Le niveau général des prix y est supérieur de 7 à "
         "12 %, et le panier alimentaire métropolitain y coûte de "
         f"<strong>{ch.ECART_PRIX_ALIMENTAIRE[0] * 100:.0f} à "
@@ -640,7 +654,7 @@ def socle():
     )
 
     indexation = (
-        f"<p>La note fixe une cible — {eur(ch.SOCLE_CIBLE)} — et ne dit rien de "
+        f"<p>La note fixe une cible — {eur(ch.SOCLE_RETENU)} — et ne dit rien de "
         "ce qu'elle devient ensuite. C'est une omission d'un autre ordre que "
         "les précédentes : <strong>un montant sans règle d'indexation n'est pas "
         "un droit, c'est une ligne budgétaire.</strong> Elle peut être rabotée "
@@ -782,9 +796,12 @@ def simulateur():
             '<form id="reglages" class="grille" novalidate>'
             + g.liste("socle", "Socle adulte", [
                 ("500", "500 € par mois — première marche"),
-                ("550", "550 € par mois — cible"),
+                ("550", "550 € par mois — cible de la note"),
+                (str(SOCLE_RETENU), f"{SOCLE_RETENU} € par mois — retenu"),
                 ("600", "600 € par mois"),
-            ], str(SOCLE_CIBLE), "Ordre de grandeur donné par la note (§4).")
+            ], str(SOCLE_RETENU),
+                "La note donne une fourchette (§4) ; le parti retient "
+                f"{SOCLE_RETENU} €.")
             + g.champ("taux", "Contribution de solidarité",
                       f"{ch.boucler().taux * 100:.0f}",
                       "En % du revenu. Le taux qui boucle le financement.",
@@ -961,7 +978,7 @@ def cas_types():
          "Elles sont détaillées en premier, avec ce qu'il faudrait pour "
          "les fermer."),
         ("Socle qui ne ferait aucun perdant", eur(ch.SOCLE_NEUTRALITE),
-         f"Contre {eur(ch.SOCLE_CIBLE)} dans la cible de la note."),
+         f"Contre {eur(ch.SOCLE_RETENU)} dans la cible de la note."),
     ])
 
     lecture = (
@@ -975,7 +992,7 @@ def cas_types():
             "RSA, aide au logement, allocations familiales, AAH, ASPA, prime "
             "d'activité. Ce sont des montants publiés, vérifiables un par un.",
             "<strong>La colonne « avec le socle » applique la note</strong> — "
-            f"socle de {eur(ch.SOCLE_CIBLE)}, forfait enfant de "
+            f"socle de {eur(ch.SOCLE_RETENU)}, forfait enfant de "
             f"{eur(ch.FORFAIT_ILLUSTRATION)}, contribution de "
             f"{pourcent(b.taux)} sur le revenu du travail.",
             "<strong>L'impôt sur le revenu ne bouge pas</strong> — la "
@@ -1059,7 +1076,7 @@ def cas_types():
             f"<p>{ch.contrainte_structurelle()}</p>", "vigilance")
         + g.repere(f"Écarts calculés à partir des {en_lettres(len(cas))} "
                    "situations ci-dessus, "
-                   f"pour un socle de {eur(ch.SOCLE_CIBLE)} et une contribution "
+                   f"pour un socle de {eur(ch.SOCLE_RETENU)} et une contribution "
                    f"de {pourcent(b.taux)}.")
     )
 
@@ -1087,7 +1104,7 @@ def cas_types():
 def jeunes():
     reperes = g.fiches([
         ("Ouverture du socle", "18 ans", "Contre 25 ans pour le RSA aujourd'hui."),
-        ("Socle mensuel", f"{SOCLE_CIBLE}&nbsp;€",
+        ("Socle mensuel", f"{SOCLE_RETENU}&nbsp;€",
          "Le même que pour tout adulte : il n'y a pas de socle jeune au rabais."),
         ("Conditions de ressources des parents", "Aucune",
          "Le droit est propre, l'administration n'a plus à reconstituer la solidarité "
@@ -1264,11 +1281,11 @@ def familles():
     )
 
     arbitrage = (
-        "<p>Le forfait enfant est le dernier montant que la note laisse "
-        "ouvert, et il porte le sort des familles que le §20.2 désigne comme "
-        "le risque social principal de la réforme. Il n'est plus ouvert vers "
-        "le haut : le financement du socle laisse une enveloppe bornée, et "
-        "elle s'achète une seule fois.</p>"
+        "<p>Le forfait enfant portait le sort des familles que le §20.2 "
+        "désigne comme le risque social principal de la réforme, et la note "
+        "ne le chiffrait pas. <strong>Il est fixé à "
+        f"{eur(ch.FORFAIT_RETENU)} par mois.</strong> Voici ce que ce niveau "
+        "fait, et ce que les autres auraient fait.</p>"
         + g.tableau(
             ["Forfait enfant", "Ce qu'il fait à la famille monoparentale",
              "Ce qu'il suppose"],
@@ -1276,18 +1293,25 @@ def familles():
               eur(ch.cas_types(forfait=200)[INDICE_MONOPARENTALE].ecart)
               + " par mois",
               "Un chiffre rond, sans justification à opposer."],
-             [eur(ch.FORFAIT_NEUTRE_BUDGET) + " / mois "
+             [eur(ch.FORFAIT_NEUTRE_BUDGET) + " / mois",
+              eur(ch.cas_types(forfait=ch.FORFAIT_NEUTRE_BUDGET)[
+                  INDICE_MONOPARENTALE].ecart) + " par mois",
+              "Le forfait d'équilibre : il coûte exactement ce que le crédit "
+              "familial remplace, et ne dépense donc rien de plus."],
+             [eur(ch.FORFAIT_RETENU) + " / mois "
               '<span class="badge proposition">retenu</span>',
-              eur(ch.cas_types()[INDICE_MONOPARENTALE].ecart) + " par mois",
-              "Le forfait qui coûte exactement ce que le crédit familial "
-              "remplace : il ne dépense rien de plus."],
-             [eur(ch.forfait_finance_par(ch.marge_disponible())) + " / mois",
               "<strong>"
-              + eur(ch.ecart_apres_usage(ch.usages_de_la_marge()[1],
-                                         INDICE_MONOPARENTALE))
+              + eur(ch.cas_types()[INDICE_MONOPARENTALE].ecart)
               + " par mois</strong>",
-              "Toute l'enveloppe restante mise ici, et rien sur le socle. "
-              'C\'est le maximum atteignable.'],
+              "La part de l'enveloppe que l'arbitrage attribue à l'enfant, le "
+              "reste allant au socle. "
+              '<a href="financement.html#enveloppe">Voir l\'arbitrage</a>'],
+             [eur(456) + " / mois",
+              eur(ch.cas_types(socle=ch.SOCLE_CIBLE, forfait=456)[
+                  INDICE_MONOPARENTALE].ecart) + " par mois",
+              "Toute l'enveloppe ici et rien sur le socle : la monoparentale "
+              "y gagne le plus, mais le salarié au SMIC y perd davantage. "
+              "Écarté pour cette raison."],
              [eur(500) + " / mois",
               eur(ch.cas_types(forfait=500)[INDICE_MONOPARENTALE].ecart)
               + " par mois",
@@ -1300,9 +1324,12 @@ def familles():
             "fois plus efficace que le socle</strong> pour réduire les pertes, "
             "parce qu'il se concentre sur treize millions huit cent mille "
             "enfants là où le socle se répartit sur cinquante-cinq millions de "
-            "personnes. C'est l'argument le plus fort en faveur d'un forfait "
-            "élevé, et il ne dépend d'aucune préférence politique. "
-            '<a href="financement.html#enveloppe">Voir l\'enveloppe</a></p>')
+            "personnes. C'est ce qui justifie de lui attribuer une part de "
+            "l'enveloppe très supérieure à son poids dans la population. Ce "
+            "n'est pas ce qui justifierait de lui donner tout : le salarié au "
+            "SMIC sans enfant paierait alors le taux plus élevé sans rien "
+            'recevoir. <a href="financement.html#enveloppe">Voir '
+            "l'arbitrage</a></p>")
         + g.repere("Écarts recalculés pour chaque niveau de forfait à partir "
                    "du cas type de la famille monoparentale sans emploi, aux "
                    "barèmes 2026.")
@@ -1475,8 +1502,8 @@ def protections():
         + '<div id="complement-vieillesse"><h3>Le complément vieillesse</h3>'
         + "<p>Le socle senior est servi à tous, mais il est inférieur à "
         f"l'actuel minimum vieillesse : {eur(ch.ASPA_PERSONNE_SEULE)} contre "
-        f"{eur(ch.SOCLE_CIBLE)}. Servi seul, il ferait perdre "
-        f"{eur(ch.ASPA_PERSONNE_SEULE - ch.SOCLE_CIBLE)} par mois à une "
+        f"{eur(ch.SOCLE_RETENU)}. Servi seul, il ferait perdre "
+        f"{eur(ch.ASPA_PERSONNE_SEULE - ch.SOCLE_RETENU)} par mois à une "
         "personne âgée sans ressources. <strong>Un complément vieillesse est "
         "donc versé par-dessus</strong>, exactement comme l'AAH devient un "
         "complément handicap.</p>"
@@ -1487,7 +1514,7 @@ def protections():
             "finançable : un complément forfaitaire versé à tous les retraités "
             "coûterait plus de quatre-vingts milliards.",
             "<strong>Il ne concerne qu'une minorité</strong> — le socle de "
-            f"{eur(ch.SOCLE_CIBLE)} couvre à lui seul la plus grande partie de "
+            f"{eur(ch.SOCLE_RETENU)} couvre à lui seul la plus grande partie de "
             "ce que l'ASPA versait. Ne reste à payer que ce qui dépasse.",
             "<strong>Il garantit un plancher, pas un droit nouveau</strong> — "
             "aucun bénéficiaire actuel du minimum vieillesse ne perd un euro, "
@@ -2088,7 +2115,7 @@ def financement():
     b = ch.boucler()
     reperes = g.fiches([
         ("Coût brut du socle adulte", md(b.brut),
-         f"{ch.SOCLE_CIBLE} € par mois pour environ 40 millions de personnes "
+         f"{ch.SOCLE_RETENU} € par mois pour environ 40 millions de personnes "
          "de 18 à 64 ans."),
         ("Coût net, une fois les prestations absorbées", md(b.net),
          "C'est ce chiffre-là qu'il faut financer, et lui seul."),
@@ -2098,11 +2125,11 @@ def financement():
 
     adulte = ch.boucler_etage()
     lignes = [
-        [f"<strong>Socle adulte</strong> — {ch.SOCLE_CIBLE} € × 12 × 40 millions",
+        [f"<strong>Socle adulte</strong> — {ch.SOCLE_RETENU} € × 12 × 40 millions",
          f"<strong>{md(adulte.brut)}</strong>",
          "Les 18-64 ans, selon l'hypothèse de population de la note (§4)."],
-        [f"<strong>Socle senior</strong> — {ch.SOCLE_CIBLE} € × 12 × 14,7 millions",
-         f"<strong>{md(ch.cout_brut(ch.SOCLE_CIBLE, ch.POPULATION_65_PLUS) / ch.MILLIARD)}</strong>",
+        [f"<strong>Socle senior</strong> — {ch.SOCLE_RETENU} € × 12 × 14,7 millions",
+         f"<strong>{md(ch.cout_brut(ch.SOCLE_RETENU, ch.POPULATION_65_PLUS) / ch.MILLIARD)}</strong>",
          "Le troisième étage, servi à tous. La note le pose (§3) sans le "
          'chiffrer. <a href="#retraites">Voir la décision</a>'],
         ["<strong>Coût brut total</strong>", f"<strong>{md(b.brut)}</strong>", ""],
@@ -2156,7 +2183,7 @@ def financement():
               f"<strong>{pourcent(b.taux)}</strong>"]],
             ["nombre", "nombre", "nombre"],
             "Le taux de la contribution, pour un socle de "
-            f"{ch.SOCLE_CIBLE} € par mois")
+            f"{ch.SOCLE_RETENU} € par mois")
         + "<p>Ce taux est un chiffre lourd, et il vaut mieux l'écrire soi-même "
         "que se le faire écrire. Il a une contrepartie, que le site ne disait "
         "nulle part — <strong>le point de bascule</strong> : le revenu à partir "
@@ -2187,6 +2214,10 @@ def financement():
                if c.socle == ch.SOCLE_MARCHE else
                "Cible de régime stabilisé (note, §4)."
                if c.socle == ch.SOCLE_CIBLE else
+               "<strong>La calibration retenue</strong> : ce que l'enveloppe "
+               "permet en gardant une marge sous le plafond. "
+               '<a href="#enveloppe">Voir l\'arbitrage</a>'
+               if c.socle == ch.SOCLE_RETENU else
                "<strong>Le plafond</strong> : au-delà, le prélèvement marginal "
                "au sommet du barème franchit le seuil des deux tiers. "
                '<a href="#marginal">Voir le calcul</a>'
@@ -2208,14 +2239,14 @@ def financement():
     )
 
     trous = (
-        "<p>La note laissait trois montants ouverts. Deux sont désormais "
-        "écrits : la contribution "
-        '<a href="#ajout">s\'ajoute à l\'impôt sur le revenu</a>, et le socle '
-        'senior <a href="#retraites">est servi à tous</a>. Reste le '
-        "troisième — et il n'est plus ouvert vers le haut : "
-        '<a href="#enveloppe">l\'enveloppe disponible</a> le borne à '
-        f"{eur(ch.forfait_finance_par(ch.marge_disponible()))} par mois, "
-        "au-delà desquels le plafond constitutionnel est franchi.</p>"
+        "<p>La note laissait trois montants ouverts. <strong>Les trois sont "
+        "désormais écrits</strong> : la contribution "
+        '<a href="#ajout">s\'ajoute à l\'impôt sur le revenu</a>, le socle '
+        'senior <a href="#retraites">est servi à tous</a>, et le forfait '
+        f'enfant est fixé à {eur(ch.FORFAIT_RETENU)} par '
+        '<a href="#enveloppe">l\'arbitrage sur l\'enveloppe</a>. Ce qui suit '
+        "montre comment le dernier a été calibré, et ce que d'autres niveaux "
+        "auraient produit.</p>"
         + g.depliant(
             "Le forfait enfant — le montant qui décide du sort des monoparentales",
             "<p>Le crédit familial remplace "
@@ -2236,15 +2267,16 @@ def financement():
                 ["texte", "nombre", "nombre", "texte long"],
                 "Ce que coûte chaque niveau de forfait enfant")
             + "<p>La lecture est sans échappatoire : le forfait qui équilibre "
-            f"le bloc familial est de {eur(ch.FORFAIT_NEUTRE_BUDGET)}, celui "
-            "qui rendrait la famille monoparentale strictement neutre est "
-            "au-dessus du plafond, et le maximum atteignable est de "
-            f"{eur(ch.forfait_finance_par(ch.marge_disponible()))} — soit "
-            f"{eur(ch.ecart_apres_usage(ch.usages_de_la_marge()[1], INDICE_MONOPARENTALE))} "
-            "par mois pour cette famille, contre "
-            f"{eur(ch.cas_types()[INDICE_MONOPARENTALE].ecart)} aujourd'hui. "
-            'C\'est <a href="#enveloppe">tout ce que l\'enveloppe permet</a>, '
-            "et c'est beaucoup.</p>",
+            f"le bloc familial est de {eur(ch.FORFAIT_NEUTRE_BUDGET)} et ne "
+            "dépense rien de plus ; celui qui rendrait la famille "
+            "monoparentale strictement neutre est au-dessus du plafond. "
+            f"L'arbitrage retient {eur(ch.FORFAIT_RETENU)}, ce qui porte cette "
+            f"famille à {eur(ch.cas_types()[INDICE_MONOPARENTALE].ecart)} par "
+            "mois contre "
+            f"{eur(ch.cas_types(socle=ch.SOCLE_CIBLE, forfait=ch.FORFAIT_NEUTRE_BUDGET)[INDICE_MONOPARENTALE].ecart)} "
+            "sans lui. "
+            'Le reste de l\'enveloppe va au socle : <a href="#enveloppe">voir '
+            "pourquoi</a>.</p>",
             "forfait-enfant")
         + g.repere("Montants remplacés par le crédit familial : CNAF et "
                    "dépenses fiscales.")
@@ -2322,8 +2354,8 @@ def financement():
         "par mois :</p>"
         + g.tableau(
             ["Revenu mensuel du travail", "Contribution", "Socle reçu", "Position"],
-            [[eur(revenu), eur(revenu * b.taux), eur(ch.SOCLE_CIBLE),
-              "Bénéficiaire net" if revenu * b.taux < ch.SOCLE_CIBLE
+            [[eur(revenu), eur(revenu * b.taux), eur(ch.SOCLE_RETENU),
+              "Bénéficiaire net" if revenu * b.taux < ch.SOCLE_RETENU
               else "Contributeur net"]
              for revenu in (0, 1500, 3000, 4500, 8000)],
             ["nombre", "nombre", "nombre", "texte"],
@@ -2495,7 +2527,7 @@ def financement():
         "tiennent ensemble, et il faut les dire ensemble.</p>"
         + "<p>Le corollaire est écrit lui aussi. Servir le socle à tous ne "
         "met pas à l'abri les bénéficiaires du minimum vieillesse : l'ASPA "
-        f"vaut {eur(ch.ASPA_PERSONNE_SEULE)}, le socle {eur(ch.SOCLE_CIBLE)}. "
+        f"vaut {eur(ch.ASPA_PERSONNE_SEULE)}, le socle {eur(ch.SOCLE_RETENU)}. "
         "Un <strong>complément vieillesse</strong> est donc versé par-dessus, "
         "décalque exact du complément handicap du §10, et il porte les "
         f"ressources d'une personne âgée seule à {eur(ch.ASPA_PERSONNE_SEULE)} "
@@ -2518,62 +2550,91 @@ def financement():
                    "est une décision du parti.")
     )
 
+    DEPART = (ch.SOCLE_CIBLE, ch.FORFAIT_NEUTRE_BUDGET)
+    RETENU = (ch.SOCLE_RETENU, ch.FORFAIT_RETENU)
+
+    def _ligne(socle, forfait, libelle, commentaire):
+        bouclage = ch.boucler(socle, forfait)
+        marginal = ch.taux_marginal_sommet(bouclage.taux)
+        cas = ch.cas_types(socle=socle, forfait=forfait,
+                           taux=round(bouclage.taux, 2))
+        return [libelle, f"{eur(socle)} / {eur(forfait)}",
+                pourcent_fin(marginal)
+                + (' <span class="badge">dépasse</span>'
+                   if marginal > ch.SEUIL_CONFISCATOIRE else ""),
+                eur(cas[INDICE_CELIBATAIRE].ecart),
+                eur(cas[INDICE_MONOPARENTALE].ecart),
+                eur(cas[INDICE_SMICARD].ecart),
+                commentaire]
+
     enveloppe = (
-        "<p>Les deux questions qui restaient ouvertes — le niveau du socle et "
-        "le forfait enfant — <strong>n'en font plus qu'une</strong>. Tant que "
-        "le plafond n'était pas calculé, chacune était ouverte vers le haut. "
-        "Les deux décisions prises les ont refermées sur une même enveloppe : "
-        "ce qui sépare la calibration retenue du taux maximal.</p>"
-        + g.engagements([
-            (md(ch.marge_disponible()), "L'enveloppe qui reste",
-             f"Entre les {pourcent_precis(ch.boucler().taux)} de la "
-             f"calibration retenue et les "
-             f"{pourcent_precis(ch.taux_maximal_constitutionnel())} que le "
-             "seuil des deux tiers autorise."),
-            ("1", "Le nombre de fois où elle s'achète",
-             "Mise sur le socle, elle ne l'est pas sur le forfait enfant. "
-             "C'est ce qui rend l'arbitrage tranchable."),
-        ])
-        + "<p>Voici ce qu'elle achète, et l'écart entre les deux colonnes est "
-        "le résultat le plus utile de tout ce chiffrage.</p>"
+        "<p>Le niveau du socle et le forfait enfant étaient les deux dernières "
+        "questions ouvertes. Le plafond les a refermées sur une même enveloppe, "
+        "qui ne s'achète qu'une fois. <strong>L'arbitrage est fait.</strong></p>"
+        + g.encadre('<p class="chapeau" style="margin:0">Socle de '
+                    f"{eur(ch.SOCLE_RETENU)} par mois, forfait enfant de "
+                    f"{eur(ch.FORFAIT_RETENU)}. La note donnait une fourchette "
+                    f"de {ch.SOCLE_MARCHE} à 600 € (§4) ; c'est à l'intérieur "
+                    "de cette fourchette que le parti se place.</p>")
         + g.tableau(
-            ["Usage de l'enveloppe", "Socle", "Forfait enfant",
-             "Le célibataire sans emploi", "La famille monoparentale"],
-            [[usage.libelle, eur(usage.socle), eur(usage.forfait),
-              f"{eur(ch.ecart_apres_usage(usage, INDICE_CELIBATAIRE))}",
-              f"<strong>{eur(ch.ecart_apres_usage(usage, INDICE_MONOPARENTALE))}"
-              "</strong>"]
-             for usage in ch.usages_de_la_marge()],
-            ["texte long", "nombre", "nombre", "nombre", "nombre"],
-            "Ce que l'enveloppe achète, selon où on la met")
+            ["Usage de l'enveloppe", "Socle / forfait", "Prélèvement marginal",
+             "Célibataire", "Monoparentale", "Smicard", "Pourquoi pas"],
+            [_ligne(*DEPART, "Ne rien dépenser",
+                    "La note seule. Les trois perdants restent où ils sont."),
+             _ligne(ch.SOCLE_PLAFOND, ch.FORFAIT_NEUTRE_BUDGET,
+                    "Tout sur le socle",
+                    "Tout le monde progresse un peu, mais la famille "
+                    "monoparentale — le risque social que la note désigne "
+                    "elle-même (§20.2) — reste la plus mal traitée."),
+             _ligne(ch.SOCLE_CIBLE,
+                    ch.forfait_finance_par(ch.marge_disponible(ch.SOCLE_CIBLE)),
+                    "Tout sur le forfait",
+                    "Referme presque la monoparentale, mais <strong>dégrade le "
+                    "salarié au SMIC</strong> : il paie le taux plus élevé sans "
+                    "recevoir de forfait. Le programme ne peut pas se le "
+                    "permettre."),
+             _ligne(*RETENU, "<strong>Retenu</strong>",
+                    "<strong>Les trois perdants progressent, aucun n'est "
+                    "sacrifié, et il reste de la marge sous le plafond.</strong>"),
+             _ligne(ch.SOCLE_PLAFOND, 335, "Épuiser l'enveloppe",
+                    "Meilleur sur le papier, mais franchit le seuil.")],
+            ["texte", "texte", "nombre", "nombre", "nombre", "nombre",
+             "texte long"],
+            "Les cinq façons d'employer l'enveloppe, et celle qui est retenue")
+        + g.engagements([
+            (md(ch.boucler().net - ch.boucler(*DEPART).net),
+             "Ce que l'arbitrage dépense",
+             f"Sur une enveloppe de "
+             f"{md(ch.marge_disponible(ch.SOCLE_CIBLE))}. Le reste n'est pas "
+             "dépensé, et c'est délibéré."),
+            (pourcent_precis(ch.SEUIL_CONFISCATOIRE
+                             - ch.taux_marginal_sommet(ch.boucler().taux)),
+             "La marge gardée sous le seuil",
+             "Le plafond est calculé sur un modèle approché — abattement "
+             "plafonné, seuils de la contribution exceptionnelle, dépendance "
+             "au foyer. Dépenser jusqu'au dernier centième d'une ligne "
+             "approximative serait imprudent."),
+        ])
         + g.note(
-            "<p><strong>Le forfait enfant est environ quatre fois plus "
-            "efficace que le socle, à euro dépensé.</strong> La raison est "
-            "arithmétique et sans appel : le socle se répartit sur "
-            "cinquante-cinq millions de personnes, le forfait sur "
-            "treize millions huit cent mille enfants. Mettre toute l'enveloppe "
-            "sur le forfait fait passer la famille monoparentale de "
-            f"{eur(ch.cas_types()[INDICE_MONOPARENTALE].ecart)} à "
-            f"{eur(ch.ecart_apres_usage(ch.usages_de_la_marge()[1], INDICE_MONOPARENTALE))} "
-            "par mois — c'est-à-dire refermer presque entièrement ce que la "
-            "note désigne elle-même comme son risque social principal "
-            "(§20.2).</p>")
-        + "<p>Il faut dire aussi ce que l'enveloppe <strong>n'achète pas</strong>. "
-        "Le célibataire sans emploi reste perdant dans les trois colonnes : "
-        f"le rendre neutre demanderait un socle de {eur(ch.SOCLE_NEUTRALITE)}, "
-        "très au-delà du plafond. Ce cas type ne se referme pas par le "
-        "calibrage — il se referme en réformant le barème de l'impôt, ce qui "
-        "est un autre chapitre, ou il s'assume.</p>"
-        + g.note(
-            "<p><strong>Cet arbitrage n'est pas tranché ici.</strong> Le "
-            "chiffrage le rend décidable ; la décision appartient au parti, "
-            "comme les deux précédentes. Ce qui est acquis, c'est qu'il n'y a "
-            "plus de troisième voie : l'enveloppe est bornée, elle s'achète "
-            "une fois, et son emploi le plus efficace est connu.</p>",
-            "vigilance")
-        + g.repere("Enveloppe calculée comme l'écart entre le taux retenu et "
-                   "le taux maximal, appliqué à l'assiette large. Les écarts "
-                   "par cas type sont recalculés pour chaque calibration.")
+            "<p>Deux raisons ont écarté l'option qui referme le mieux la "
+            "famille monoparentale. La première est que <strong>le salarié au "
+            "SMIC y perd davantage</strong> : il supporte le taux plus élevé "
+            "sans recevoir de forfait. Pour un programme dont la promesse "
+            "centrale est que le travail paie toujours, dégrader le smicard "
+            "pour financer autre chose est le seul arbitrage vraiment "
+            "interdit. La seconde est qu'elle épuise l'enveloppe jusqu'au "
+            "seuil.</p>", "vigilance")
+        + "<p>Il faut dire ce que l'arbitrage ne fait pas. Le célibataire sans "
+        "emploi et la famille monoparentale restent perdants d'environ trois "
+        "cents euros par mois. <strong>Aucune calibration ne les referme</strong> : "
+        f"il y faudrait un socle de {eur(ch.SOCLE_NEUTRALITE)}, trois fois "
+        "au-delà du plafond. Ces deux cas types ne se règlent pas par le "
+        "calibrage, mais en réformant le barème de l'impôt sur le revenu, ce "
+        "qui libérerait de la place sous le seuil — et c'est un chapitre du "
+        "programme qui reste à écrire.</p>"
+        + g.repere("Enveloppe mesurée depuis la cible de la note et le forfait "
+                   "d'équilibre. Écarts recalculés pour chaque calibration, au "
+                   "taux qu'elle appelle.")
     )
 
     return page(
@@ -2591,13 +2652,13 @@ def financement():
         [("net", "Du coût brut au coût net", net),
          ("taux", "Le taux, et le point de bascule", taux),
          ("arbitrage", "Ce que coûte chaque niveau de socle", arbitrage),
-         ("trous", "Le montant qui manque encore", trous),
+         ("trous", "Comment le forfait enfant est calibré", trous),
          ("exclus", "Ce que ce bouclage refuse de compter", exclus),
          ("contribution", "La contribution de solidarité", contribution),
          ("ajout", "La contribution s'ajoute à l'impôt", ajout),
          ("marginal", "Ce que ça fait au sommet du barème", marginal),
          ("retraites", "Ce que ça fait aux retraités", retraites),
-         ("enveloppe", "L'enveloppe qui reste, et ce qu'elle achète", enveloppe),
+         ("enveloppe", "L'arbitrage : où va l'enveloppe", enveloppe),
          ("progressivite", "D'où vient la progressivité", progressivite)],
         tete=reperes)
 
@@ -2803,22 +2864,22 @@ def questions():
               g.source("Note de doctrine, §16 ; le périmètre de droit est propre "
                        "à ce site."),
               identifiant="q-etrangers"),
-        g.cle("Qu'est-ce qui reste à décider ?",
-              "Une seule chose : où mettre ce qu'il reste. Le financement du socle "
-              "laisse une enveloppe bornée par le plafond constitutionnel, et elle "
-              "s'achète une fois — sur le socle, ou sur le forfait enfant, pas sur les "
-              "deux. À euro dépensé, le forfait enfant réduit environ quatre fois plus "
-              "les pertes, parce qu'il se concentre sur les enfants là où le socle se "
-              "répartit sur tous les adultes.",
-              "<p>Mis entièrement sur le forfait enfant, il ferait passer la "
-              "famille monoparentale de "
-              f"{eur(ch.cas_types()[INDICE_MONOPARENTALE].ecart)} à "
-              f"{eur(ch.ecart_apres_usage(ch.usages_de_la_marge()[1], INDICE_MONOPARENTALE))} "
-              "par mois : c'est refermer presque entièrement le risque social "
-              "que la note désigne elle-même comme principal. "
-              '<a href="financement.html#enveloppe">Voir l\'enveloppe et ses '
-              "trois usages</a></p>",
-              g.repere("Enveloppe calculée entre le taux retenu et le taux "
+        g.cle("Pourquoi ce niveau de socle, et pas un autre ?",
+              f"Parce que c'est ce que l'enveloppe permet. À {eur(ch.SOCLE_RETENU)} de "
+              f"socle et {eur(ch.FORFAIT_RETENU)} de forfait enfant, les trois "
+              "situations qui perdent progressent toutes les trois, et il reste une "
+              "marge sous le seuil au-delà duquel le prélèvement marginal serait jugé "
+              "confiscatoire. Un euro de plus se prendrait sur cette marge.",
+              "<p>Monter le socle plus haut, ou le forfait plus haut, était "
+              "possible — mais pas les deux, et chaque option avait son "
+              "perdant. Tout mettre sur le forfait aurait presque refermé le "
+              "cas de la famille monoparentale, au prix du salarié au SMIC, "
+              "qui aurait payé le taux plus élevé sans rien recevoir. Pour un "
+              "programme dont la promesse centrale est que le travail paie "
+              "toujours, c'est le seul arbitrage vraiment interdit. "
+              '<a href="financement.html#enveloppe">Voir les cinq options et '
+              "celle qui est retenue</a></p>",
+              g.repere("Enveloppe mesurée entre la cible de la note et le taux "
                        "maximal compatible avec le seuil des deux tiers."),
               identifiant="q-enveloppe"),
         g.cle("La contribution remplace-t-elle l'impôt sur le revenu ?",

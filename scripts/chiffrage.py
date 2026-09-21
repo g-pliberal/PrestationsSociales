@@ -153,6 +153,17 @@ ENFANTS = 13_800_000             # enfants à charge, ordre de grandeur
 SOCLE_CIBLE = 550                # € / mois, cible de régime stabilisé (note, §4)
 SOCLE_MARCHE = 500               # € / mois, première marche (note, §20.1)
 
+#: LA CALIBRATION RETENUE. La note donne une fourchette — 500, 550, 600 (§4) —
+#: et une cible. Le parti retient 575 €, à l'intérieur de cette fourchette,
+#: parce que c'est ce que l'enveloppe disponible permet sans porter le
+#: prélèvement marginal au contact du seuil de censure.
+#:
+#: DEUX CONSTANTES PLUTÔT QU'UNE, et la distinction n'est pas cosmétique :
+#: SOCLE_CIBLE est de la doctrine, elle se cite « note, §4 » ; SOCLE_RETENU est
+#: une décision du parti, elle se cite comme telle. Les mélanger ferait passer
+#: un arbitrage pour une lecture.
+SOCLE_RETENU = 575
+
 
 def cout_brut(socle_mensuel: float, personnes: int) -> float:
     """Le coût brut annuel d'un socle, en euros."""
@@ -244,8 +255,21 @@ class Bouclage:
     socle_annuel: float
 
 
-def boucler(socle_mensuel: float = SOCLE_CIBLE) -> Bouclage:
-    """LE BOUCLAGE PUBLIÉ : les deux étages, adulte et senior.
+def solde_familial(forfait_mensuel: float | None = None) -> float:
+    """Ce que le bloc familial coûte NET, en Md€ : le forfait moins ce qu'il remplace.
+
+    Nul par construction au forfait d'équilibre, positif au-dessus, négatif en
+    dessous. Il doit entrer dans le bouclage, faute de quoi augmenter le
+    forfait enfant ne coûte rien — ce que le modèle a cru pendant un temps.
+    """
+    if forfait_mensuel is None:
+        forfait_mensuel = FORFAIT_ILLUSTRATION
+    return cout_forfait(forfait_mensuel) - CONTREPARTIE_FAMILIALE_TOTALE
+
+
+def boucler(socle_mensuel: float = SOCLE_RETENU,
+            forfait_mensuel: float | None = None) -> Bouclage:
+    """LE BOUCLAGE PUBLIÉ : les deux étages, le complément, et le bloc familial.
 
     C'est le défaut, et c'est délibéré. Ce module a d'abord porté un bouclage
     à un seul étage ; quand le second est arrivé, six appels sur sept ont
@@ -253,18 +277,25 @@ def boucler(socle_mensuel: float = SOCLE_CIBLE) -> Bouclage:
     défaut d'une fonction est ce qu'on obtient quand on ne réfléchit pas — il
     doit donc être la réponse juste. `boucler_etage()` reste disponible pour
     le tableau qui décompose les deux étages, et il faut l'appeler exprès.
+
+    LE BLOC FAMILIAL A ÉTÉ AJOUTÉ APRÈS COUP, et la faute mérite d'être dite :
+    le forfait enfant n'y figurait pas, de sorte que le relever paraissait
+    gratuit. Il ne l'est pas — il se paie sur la même enveloppe que le socle,
+    et c'est ce qui rend l'arbitrage entre les deux réel.
     """
     return boucler_etage(
         socle_mensuel,
         personnes=POPULATION_18_64 + POPULATION_65_PLUS,
         # L'ASPA est absorbée, mais le complément vieillesse en sert une part :
-        # il se retranche donc de l'économie, et non du coût brut.
+        # il se retranche donc de l'économie, et non du coût brut. Le solde
+        # familial fait de même, avec le signe inverse.
         absorbe_milliards=(sum(poste.milliards for poste in ABSORBEES)
                            + ASPA_COUT
-                           - cout_complement_vieillesse(socle_mensuel)))
+                           - cout_complement_vieillesse(socle_mensuel)
+                           - solde_familial(forfait_mensuel)))
 
 
-def boucler_etage(socle_mensuel: float = SOCLE_CIBLE,
+def boucler_etage(socle_mensuel: float = SOCLE_RETENU,
                   personnes: int = POPULATION_18_64,
                   absorbe_milliards: float | None = None) -> Bouclage:
     """Le bouclage complet, du coût brut au point de bascule.
@@ -292,7 +323,8 @@ def boucler_etage(socle_mensuel: float = SOCLE_CIBLE,
 SOCLE_NEUTRALITE = round(rsa_foyer(1) + APL_SANS_RESSOURCES)
 
 
-def taux_publie(socle_mensuel: float = SOCLE_CIBLE) -> float:
+def taux_publie(socle_mensuel: float = SOCLE_RETENU,
+                forfait_mensuel: float | None = None) -> float:
     """Le taux tel que le site l'ÉCRIT : arrondi au point de pourcentage.
 
     Le site publie un taux rond ; s'en servir ailleurs à la décimale ferait
@@ -300,7 +332,7 @@ def taux_publie(socle_mensuel: float = SOCLE_CIBLE) -> float:
     mêmes situations. Un écart pareil ne se remarque que quand quelqu'un le
     cherche, et quelqu'un le cherchera.
     """
-    return round(boucler(socle_mensuel).taux, 2)
+    return round(boucler(socle_mensuel, forfait_mensuel).taux, 2)
 
 
 def calibrations() -> list[Bouclage]:
@@ -310,7 +342,8 @@ def calibrations() -> list[Bouclage]:
     passant par le plafond que la Constitution impose : c'est l'échelle
     complète de l'arbitrage, et elle montre ce qu'il coûte.
     """
-    niveaux = [SOCLE_MARCHE, SOCLE_CIBLE, SOCLE_PLAFOND, SOCLE_NEUTRALITE]
+    niveaux = [SOCLE_MARCHE, SOCLE_CIBLE, SOCLE_RETENU, SOCLE_PLAFOND,
+               SOCLE_NEUTRALITE]
     return [boucler(niveau) for niveau in sorted(set(niveaux))]
 
 
@@ -339,7 +372,7 @@ SENIOR_SERVI_A_TOUS = True
 BENEFICIAIRES_ASPA = 700_000
 
 
-def cout_senior(socle_mensuel: float = SOCLE_CIBLE) -> float:
+def cout_senior(socle_mensuel: float = SOCLE_RETENU) -> float:
     """Le coût net du troisième étage, en Md€ : le brut moins l'ASPA absorbée."""
     return (cout_brut(socle_mensuel, POPULATION_65_PLUS) / MILLIARD
             - ASPA_COUT)
@@ -351,12 +384,12 @@ def cout_senior(socle_mensuel: float = SOCLE_CIBLE) -> float:
 COMPLEMENT_VIEILLESSE_PLAFOND = ASPA_PERSONNE_SEULE
 
 
-def complement_vieillesse(pension: float, socle_mensuel: float = SOCLE_CIBLE) -> float:
+def complement_vieillesse(pension: float, socle_mensuel: float = SOCLE_RETENU) -> float:
     """Ce que touche, en plus du socle, un retraité dont la pension est faible."""
     return max(0.0, COMPLEMENT_VIEILLESSE_PLAFOND - socle_mensuel - pension)
 
 
-def cout_complement_vieillesse(socle_mensuel: float = SOCLE_CIBLE) -> float:
+def cout_complement_vieillesse(socle_mensuel: float = SOCLE_RETENU) -> float:
     """Le coût annuel du complément vieillesse, en Md€.
 
     ATTENTION À LA MÉCANIQUE, parce qu'elle est contre-intuitive et qu'une
@@ -405,13 +438,15 @@ CONTREPARTIE_FAMILIALE_TOTALE = sum(
 FORFAIT_NEUTRE_BUDGET = round(
     CONTREPARTIE_FAMILIALE_TOTALE * MILLIARD / ENFANTS / 12)
 
-#: Le forfait retenu par défaut sur tout le site. CE N'EST PAS UN CHIFFRE ROND
-#: CHOISI À LA MAIN, et c'est délibéré : la valeur par défaut d'un calculateur
-#: public devient « le chiffre du parti » qu'on le veuille ou non, et un 200 €
-#: rond n'aurait eu aucune justification à opposer. Celui-ci en a une, en une
-#: phrase : c'est le forfait qui coûte exactement ce que le crédit familial
-#: remplace.
-FORFAIT_ILLUSTRATION = FORFAIT_NEUTRE_BUDGET
+#: LE FORFAIT RETENU. Comme le socle, ce n'est pas un chiffre rond choisi à la
+#: main : c'est la part de l'enveloppe que l'arbitrage lui attribue. Le forfait
+#: d'équilibre — celui qui coûte exactement ce que le crédit familial remplace —
+#: reste calculé au-dessus, et sert de référence.
+FORFAIT_RETENU = 330
+
+#: Conservé sous son ancien nom pour les emplois qui veulent « le forfait que le
+#: site publie », et qui doivent suivre l'arbitrage.
+FORFAIT_ILLUSTRATION = FORFAIT_RETENU
 
 #: Les trois niveaux que le site met en regard : un forfait bas, le forfait
 #: d'équilibre, et celui qui protège les familles monoparentales.
@@ -480,11 +515,11 @@ class CasType:
         return self.part > 0.02
 
 
-def cas_types(socle: float = SOCLE_CIBLE, taux: float | None = None,
+def cas_types(socle: float = SOCLE_RETENU, taux: float | None = None,
               forfait: float = FORFAIT_ILLUSTRATION) -> list[CasType]:
     """Les sept situations, calculées pour une calibration donnée."""
     if taux is None:
-        taux = taux_publie(socle)
+        taux = taux_publie(socle, forfait)
     smic_contribution = -round(SMIC_NET * taux)
 
     return [
@@ -685,12 +720,23 @@ def taux_maximal_constitutionnel() -> float:
              - CEHR_TAUX_SOMMET) / (1 - IR_TAUX_SOMMET))
 
 
-def socle_pour_taux(taux: float) -> float:
-    """Le socle mensuel que finance un taux donné, réforme complète."""
-    net = taux * ASSIETTE_LARGE
-    absorbe = sum(poste.milliards for poste in ABSORBEES) + ASPA_COUT
-    brut = (net + absorbe) * MILLIARD
-    return brut / ((POPULATION_18_64 + POPULATION_65_PLUS) * 12)
+def socle_pour_taux(taux: float, forfait_mensuel: float | None = None) -> float:
+    """Le socle mensuel dont le bouclage complet atteint un taux donné.
+
+    Résolu par dichotomie plutôt que par une formule, parce que deux termes du
+    bouclage dépendent eux-mêmes du socle : le complément vieillesse, qui
+    diminue quand le socle monte, et le solde familial. Une formule fermée les
+    ignorerait — une première version le faisait, et elle plaçait le plafond
+    au-dessus du seuil qu'il était censé respecter.
+    """
+    bas, haut = 0.0, 5000.0
+    for _ in range(60):
+        milieu = (bas + haut) / 2
+        if boucler(milieu, forfait_mensuel).taux < taux:
+            bas = milieu
+        else:
+            haut = milieu
+    return bas
 
 
 #: LE PLAFOND. Le socle le plus élevé que les deux décisions laissent possible
@@ -706,7 +752,7 @@ SOCLE_PLAFOND = round(socle_pour_taux(taux_maximal_constitutionnel()))
 PART_PENSIONS = 0.20
 
 
-def taux_hors_pensions(socle_mensuel: float = SOCLE_CIBLE) -> float:
+def taux_hors_pensions(socle_mensuel: float = SOCLE_RETENU) -> float:
     """Le taux qu'il faudrait si les pensions étaient exonérées.
 
     Exonérer les pensions rétrécit l'assiette d'un cinquième ; le même montant
@@ -843,7 +889,7 @@ def population_drom() -> int:
     return sum(territoire.population for territoire in DROM)
 
 
-def cout_alignement_mayotte(socle_mensuel: float = SOCLE_CIBLE) -> float:
+def cout_alignement_mayotte(socle_mensuel: float = SOCLE_RETENU) -> float:
     """Ce que coûterait le socle plein à Mayotte, en Md€ bruts.
 
     Ordre de grandeur, et il faut le dire comme tel : Mayotte est un
@@ -920,7 +966,7 @@ class Projection:
     taux: float
 
 
-def projeter(regle: Indexation, socle_mensuel: float = SOCLE_CIBLE,
+def projeter(regle: Indexation, socle_mensuel: float = SOCLE_RETENU,
              horizons: tuple[int, ...] = HORIZONS) -> list[Projection]:
     """Ce que devient le socle sous une règle donnée, en euros d'aujourd'hui.
 
@@ -964,14 +1010,17 @@ def projeter(regle: Indexation, socle_mensuel: float = SOCLE_CIBLE,
 # en un arbitrage tranchable.
 
 
-def marge_disponible(socle_mensuel: float = SOCLE_CIBLE) -> float:
+def marge_disponible(socle_mensuel: float = SOCLE_RETENU,
+                     forfait_mensuel: float | None = None) -> float:
     """Ce qui reste à dépenser avant le plafond, en Md€ par an."""
+    if forfait_mensuel is None and socle_mensuel == SOCLE_CIBLE:
+        forfait_mensuel = FORFAIT_NEUTRE_BUDGET
     return (taux_maximal_constitutionnel()
-            - boucler(socle_mensuel).taux) * ASSIETTE_LARGE
+            - boucler(socle_mensuel, forfait_mensuel).taux) * ASSIETTE_LARGE
 
 
 def socle_finance_par(marge_milliards: float,
-                      socle_mensuel: float = SOCLE_CIBLE) -> float:
+                      socle_mensuel: float = SOCLE_RETENU) -> float:
     """Le socle mensuel qu'atteint une enveloppe entièrement mise là."""
     beneficiaires = POPULATION_18_64 + POPULATION_65_PLUS
     return socle_mensuel + marge_milliards * MILLIARD / (beneficiaires * 12)
@@ -979,49 +1028,12 @@ def socle_finance_par(marge_milliards: float,
 
 def forfait_finance_par(marge_milliards: float,
                         forfait_mensuel: float = None) -> float:
-    """Le forfait enfant qu'atteint une enveloppe entièrement mise là."""
-    if forfait_mensuel is None:
-        forfait_mensuel = FORFAIT_ILLUSTRATION
-    return forfait_mensuel + marge_milliards * MILLIARD / (ENFANTS * 12)
+    """Le forfait enfant qu'atteint une enveloppe entièrement mise là.
 
-
-@dataclass(frozen=True)
-class Usage:
-    """Une façon de dépenser l'enveloppe, et ce qu'elle produit."""
-    libelle: str
-    socle: float
-    forfait: float
-    effet: str
-
-
-def usages_de_la_marge(socle_mensuel: float = SOCLE_CIBLE) -> list[Usage]:
-    """Les trois façons de dépenser l'enveloppe, et leur effet sur les cas types.
-
-    Le partage retenu pour la troisième est la moitié-moitié, non parce qu'elle
-    serait optimale, mais parce qu'elle montre que l'arbitrage est continu :
-    entre les deux bornes, tout est possible, et rien n'est gratuit.
+    Le point de départ est le forfait d'ÉQUILIBRE, pas celui qui est retenu :
+    l'enveloppe se mesure depuis la calibration qui ne dépense rien de plus que
+    ce qu'elle remplace.
     """
-    marge = marge_disponible(socle_mensuel)
-    return [
-        Usage("Tout sur le socle",
-              socle_finance_par(marge, socle_mensuel),
-              FORFAIT_ILLUSTRATION,
-              "Le célibataire sans emploi perd moins, tous les adultes "
-              "reçoivent plus, et la famille monoparentale reste où elle est."),
-        Usage("Tout sur le forfait enfant",
-              socle_mensuel,
-              forfait_finance_par(marge),
-              "La famille monoparentale se rapproche de la neutralité sans "
-              "l'atteindre, et rien ne change pour les personnes seules."),
-        Usage("Moitié-moitié",
-              socle_finance_par(marge / 2, socle_mensuel),
-              forfait_finance_par(marge / 2),
-              "Chacun des deux cas types perdants progresse d'un peu moins de "
-              "la moitié de ce qu'il aurait gagné dans la colonne qui le "
-              "concerne."),
-    ]
-
-
-def ecart_apres_usage(usage: Usage, indice: int) -> float:
-    """L'écart d'un cas type sous un usage donné de l'enveloppe."""
-    return cas_types(socle=usage.socle, forfait=usage.forfait)[indice].ecart
+    if forfait_mensuel is None:
+        forfait_mensuel = FORFAIT_NEUTRE_BUDGET
+    return forfait_mensuel + marge_milliards * MILLIARD / (ENFANTS * 12)
