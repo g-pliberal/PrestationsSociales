@@ -54,6 +54,16 @@ def pourcent(part: float) -> str:
     return f"{part * 100:.0f}{FINE}%"
 
 
+def pourcent_precis(part: float) -> str:
+    """Une part, à la décimale. Pour les cas où l'arrondi mangerait l'argument.
+
+    Entre un taux marginal de 62,7 % et un seuil de 66,7 %, arrondir à l'entier
+    laisse « 63 % » et « 67 % » : l'écart survit, mais la précision du calcul
+    disparaît, et c'est elle qu'on nous demandera.
+    """
+    return f"{part * 100:.1f}".replace(".", ",") + f"{FINE}%"
+
+
 def ancre(texte: str) -> str:
     """Une ancre stable, déduite d'un intitulé.
 
@@ -946,11 +956,12 @@ def cas_types():
             f"socle de {eur(ch.SOCLE_CIBLE)}, forfait enfant de "
             f"{eur(ch.FORFAIT_ILLUSTRATION)}, contribution de "
             f"{pourcent(b.taux)} sur le revenu du travail.",
-            "<strong>Rien d'autre ne bouge</strong> — la contribution est "
-            "prise sur le revenu tel qu'il est versé aujourd'hui. Le sort de "
-            "l'impôt sur le revenu n'est pas modélisé, parce que la note ne le "
-            'tranche pas. <a href="financement.html#contribution-et-impot">Voir '
-            "pourquoi c'est le point le plus important</a>.",
+            "<strong>L'impôt sur le revenu ne bouge pas</strong> — la "
+            "contribution s'y ajoute, elle ne le remplace pas, et elle est "
+            "prise ici sur le revenu tel qu'il est versé aujourd'hui. C'est la "
+            "position du parti, et ces cas types en sont le calcul direct. "
+            '<a href="financement.html#ajout">Voir la décision et ses deux '
+            "conséquences</a>.",
         ])
         + g.note(
             "<p><strong>Ce ne sont pas des droits, et ce ne sont pas des "
@@ -2047,9 +2058,11 @@ def financement():
     )
 
     trous = (
-        "<p>Trois montants manquent au programme, et l'ordre de grandeur de "
-        "chacun est tel qu'aucun chiffrage ne tient tant qu'ils ne sont pas "
-        "écrits. Les voici, avec ce que chaque réponse coûte.</p>"
+        "<p>Deux montants manquent encore au programme, et l'ordre de "
+        "grandeur de chacun est tel qu'aucun chiffrage ne tient tant qu'ils ne "
+        "sont pas écrits. Les voici, avec ce que chaque réponse coûte. Le "
+        "troisième — la contribution remplace-t-elle l'impôt sur le revenu ou "
+        "s\'y ajoute-t-elle ? — <a href=\"#ajout\">est désormais tranché</a>.</p>"
         + g.depliant(
             "Le socle senior — un écart de 93 milliards",
             "<p>La note pose trois étages (§3) et n'en chiffre qu'un. Le coût "
@@ -2094,26 +2107,8 @@ def financement():
             "et l'écart entre les deux est le prix de la promesse faite au "
             "§7.</p>",
             "forfait-enfant")
-        + g.depliant(
-            "La contribution et l'impôt sur le revenu — la question non tranchée",
-            "<p>La note crée une contribution de solidarité proportionnelle "
-            "(§18) sans jamais dire si elle <strong>remplace</strong> l'impôt "
-            "sur le revenu ou si elle s'y <strong>ajoute</strong>. Les deux "
-            "lectures sont ouvertes par le même texte, et elles ne décrivent "
-            "pas le même programme.</p>"
-            + g.tableau(
-                ["Lecture", "Ce qu'elle produit"],
-                [[titre, corps]
-                 for titre, corps in ch.lectures_de_la_contribution(b)],
-                ["texte", "texte long"],
-                "Les deux lectures ouvertes par la note")
-            + "<p>C'est le seul point de ce chiffrage qu'un calcul ne peut pas "
-            "fermer : il appelle une décision. Tant qu'elle n'est pas écrite, "
-            "chacun peut attribuer au programme celle des deux qui l'arrange, "
-            "et ce ne sera pas la nôtre.</p>",
-            "contribution-et-impot")
-        + g.repere("Rendement de l'impôt sur le revenu : "
-                   f"{md(ch.IR_RENDEMENT)} en 2024.")
+        + g.repere("Montants remplacés par le crédit familial : CNAF et "
+                   "dépenses fiscales.")
     )
 
     exclus = (
@@ -2177,11 +2172,15 @@ def financement():
     )
 
     progressivite = (
-        "<p>Le socle permet de reconstruire une progressivité effective "
-        "<strong>avec un impôt proportionnel</strong>. Elle n'est plus produite "
-        "par un barème à tranches, mais par la combinaison d'un montant fixe "
-        "versé à tous et d'un prélèvement au même taux pour tous. Le point de "
-        f"bascule est à {eur(b.bascule_mensuelle)} par mois :</p>"
+        "<p>La progressivité de la réforme a désormais <strong>deux "
+        "sources</strong>, et il faut les distinguer pour répondre aux "
+        "objections qu'on fait à chacune.</p>"
+        "<p>La première est le barème de l'impôt sur le revenu, qui ne bouge "
+        "pas. La seconde est propre au socle : un montant fixe versé à tous, "
+        "repris par un prélèvement au même taux pour tous, produit à lui seul "
+        "une progressivité — sans tranches, sans seuils, sans condition de "
+        f"ressources. Son point de bascule est à {eur(b.bascule_mensuelle)} "
+        "par mois :</p>"
         + g.tableau(
             ["Revenu mensuel du travail", "Contribution", "Socle reçu", "Position"],
             [[eur(revenu), eur(revenu * b.taux), eur(ch.SOCLE_CIBLE),
@@ -2189,20 +2188,160 @@ def financement():
               else "Contributeur net"]
              for revenu in (0, 1500, 3000, 4500, 8000)],
             ["nombre", "nombre", "nombre", "texte"],
-            f"La progressivité, avec un socle de {SOCLE_ANNUEL_TEXTE} par an et "
-            f"une contribution de {pourcent(b.taux)}")
+            f"La progressivité propre au socle, à {SOCLE_ANNUEL_TEXTE} par an "
+            f"et {pourcent(b.taux)} de contribution — le barème de l'impôt sur "
+            "le revenu s'y ajoute")
         + '<p class="actions"><a class="bouton" href="simulateur.html">Voir sur '
         'votre revenu</a> <a class="bouton" href="cas-types.html">Voir les cas '
         "types</a></p>"
         + g.note(
-            "<p><strong>La progressivité du taux moyen n'est pas celle du taux "
-            "marginal.</strong> Un prélèvement proportionnel fait payer au "
-            "dernier décile la même part que le milieu, là où le barème actuel "
-            "lui en fait payer davantage. C'est un choix défendable — il est "
-            "lisible, il ne se contourne pas, il ne crée aucun effet de "
-            "seuil — mais c'en est un, et il doit être assumé comme tel plutôt "
-            "que présenté comme une équivalence technique.</p>", "vigilance")
+            "<p>Prise seule, cette mécanique a une limite qu'il faut "
+            "connaître : <strong>un prélèvement proportionnel fait payer au "
+            "dernier décile la même part que le milieu</strong>, là où un "
+            "barème à tranches lui en fait payer davantage. La progressivité "
+            "du taux moyen n'est pas celle du taux marginal.</p>"
+            "<p>C'est précisément pourquoi la contribution <strong>s'ajoute au "
+            "barème de l'impôt sur le revenu au lieu de le remplacer</strong>. "
+            "Le socle et sa contribution produisent la progressivité décrite "
+            "ici ; le barème, qu'ils laissent intact, produit la sienne. Les "
+            "deux se cumulent, et l'objection tombe. "
+            '<a href="#ajout">Voir la décision</a></p>')
         + g.source("Note de doctrine, §18 et §20.1 — Risque budgétaire.")
+    )
+
+    ajout = (
+        "<p>La note crée une contribution de solidarité proportionnelle sans "
+        "dire si elle remplace l'impôt sur le revenu ou si elle s'y ajoute. Les "
+        "deux lectures sortent du même texte et ne décrivent pas le même "
+        "programme. <strong>Le parti tranche : elle s'ajoute.</strong></p>"
+        + g.encadre('<p class="chapeau" style="margin:0">Le barème de l\'impôt '
+                    "sur le revenu reste ce qu'il est. La contribution de "
+                    "solidarité vient au-dessus, au même taux pour tous, et "
+                    "finance le socle.</p>")
+        + "<p>C'est la décision la plus lourde du programme, et elle ferme "
+        "d'un coup l'objection la plus dangereuse qui lui était faite. Un "
+        "prélèvement proportionnel qui <em>remplacerait</em> le barème ferait "
+        "du socle le plus gros allègement d'impôt jamais consenti au dernier "
+        f"décile : un haut revenu, aujourd'hui imposé à "
+        f"{pourcent(ch.IR_TAUX_SOMMET)} sur sa dernière tranche, aurait payé "
+        f"{pourcent(b.taux)}. En s'ajoutant, la contribution laisse la "
+        "progressivité du barème intacte et fait porter le financement du "
+        "socle sur tous les revenus, dans l'ordre où le barème les classe "
+        "déjà.</p>"
+        + g.points([
+            ("Le bouclage ne change pas",
+             f"Les {md(b.net)} de coût net et les {pourcent(b.taux)} de "
+             "contribution étaient calculés sans compter l'impôt sur le revenu "
+             "parmi les recettes. Ce choix les confirme : il ne déplace aucune "
+             "ligne du tableau."),
+            ("Le premier décile est protégé",
+             "C'était l'autre moitié de l'arbitrage. Un socle financé par un "
+             "prélèvement qui remplace le barème se paie pour partie sur les "
+             "prestations des plus modestes. Ici, non."),
+            ("La progressivité n'est plus une équivalence technique",
+             "Le site n'a plus à soutenir qu'un taux unique produit la même "
+             "progressivité qu'un barème. Le barème reste, et la contribution "
+             "s'y ajoute : la question ne se pose plus."),
+        ])
+        + g.source("Note de doctrine, §18 — la contribution y est « clairement "
+                   "identifiée, distincte des cotisations contributives » ; "
+                   "l'arbitrage entre remplacement et addition est une "
+                   "décision du parti.")
+    )
+
+    marginal = (
+        "<p>Une addition se paie au sommet du barème, et le chiffre doit être "
+        "posé avant qu'un contradicteur ne le pose. Voici les prélèvements qui "
+        "se cumulent sur la dernière tranche des revenus d'activité.</p>"
+        + g.tableau(
+            ["Situation", "Taux marginal au sommet", "Jugement"],
+            [["Aujourd'hui",
+              pourcent_precis(ch.taux_marginal_sommet()), "—"],
+             ["Avec la contribution, <strong>non déductible</strong>",
+              pourcent_precis(ch.taux_marginal_sommet(ch.taux_publie(),
+                                                      deductible=False)),
+              '<span class="badge">au-dessus du seuil</span>'],
+             ["Avec la contribution, <strong>déductible</strong>",
+              pourcent_precis(ch.taux_marginal_sommet(ch.taux_publie(),
+                                                      deductible=True)),
+              '<span class="badge proposition">sous le seuil</span>'],
+             ["<em>Seuil au-delà duquel un prélèvement risque la censure</em>",
+              f"<em>{pourcent_precis(ch.SEUIL_CONFISCATOIRE)}</em>", "—"]],
+            ["texte long", "nombre", "texte"],
+            "Le taux marginal au sommet du barème, revenus d'activité")
+        + "<p>Le Conseil constitutionnel a censuré, dans sa décision "
+        "2012-662 DC, des taux marginaux de 75 % qu'il a jugés confiscatoires "
+        "au regard de l'égalité devant les charges publiques. Le Conseil d'État "
+        "en a tiré une règle simple : <strong>deux tiers, quelle que soit la "
+        "source du revenu</strong>, est le seuil au-delà duquel une mesure "
+        "fiscale risque la censure.</p>"
+        + g.note(
+            "<p><strong>D'où une condition, et elle n'est pas négociable : la "
+            "contribution de solidarité doit être déductible de l'assiette de "
+            "l'impôt sur le revenu</strong>, comme l'est déjà la part "
+            "déductible de la CSG. Sans cette déductibilité, le taux marginal "
+            f"atteint {pourcent_precis(ch.taux_marginal_sommet(ch.taux_publie(), deductible=False))} "
+            "et passe au-dessus de la ligne ; avec elle, il s'établit à "
+            f"{pourcent_precis(ch.taux_marginal_sommet(ch.taux_publie()))} et "
+            "reste en dessous. Une ligne de texte sépare une réforme "
+            "constitutionnelle d'une réforme censurée.</p>", "vigilance")
+        + "<p>Deux points demandent encore un calibrage, et il vaut mieux les "
+        "nommer : les revenus du capital soumis au barème sur option, dont le "
+        "cumul dépasse le seuil même avec la déductibilité, et la contribution "
+        "exceptionnelle sur les hauts revenus, dont l'articulation avec la "
+        "contribution de solidarité doit être écrite.</p>"
+        + g.droit("Décision n° 2012-662 DC du 29 décembre 2012 ; synthèse du "
+                  "Conseil d'État sur le seuil des deux tiers.")
+        + g.repere("Taux marginal calculé au sommet du barème sur les revenus "
+                   "d'activité, CSG et CRDS comprises, contribution "
+                   "exceptionnelle sur les hauts revenus comprise. Ordre de "
+                   "grandeur : l'abattement de 10 % est plafonné et le calcul "
+                   "exact dépend du foyer.")
+    )
+
+    retraites = (
+        "<p>La seconde conséquence est politique avant d'être fiscale, et elle "
+        "porte sur dix-sept millions de personnes qui votent.</p>"
+        "<p>L'assiette de la contribution est large : elle comprend les "
+        "pensions de retraite, comme celle de la CSG. Or la note prévoit que le "
+        "socle senior remplace l'ASPA et que <strong>aucune pension n'augmente "
+        "du fait de la réforme</strong> (§15). Si le troisième étage reste "
+        "différentiel, un retraité paie la contribution et ne reçoit rien : il "
+        f"perd {pourcent(b.taux)} de sa pension, sans contrepartie.</p>"
+        + g.tableau(
+            ["Option", "Ce qu'elle produit", "Ce qu'elle coûte"],
+            [["Socle senior <strong>différentiel</strong>, au niveau de l'ASPA",
+              f"Chaque retraité perd {pourcent(b.taux)} de sa pension sans rien "
+              "recevoir. Les bénéficiaires du minimum vieillesse sont protégés, "
+              "les autres non.",
+              "Rien de plus que les " + md(ch.ASPA_COUT) + " de l'ASPA — et "
+              "une campagne perdue chez les retraités."],
+             ["Socle senior <strong>servi à tous</strong>",
+              "Chaque retraité reçoit le socle et paie la contribution. Il "
+              f"gagne au change en dessous de {eur(ch.pension_de_bascule())} de "
+              "pension mensuelle, c'est-à-dire dans la très grande majorité des "
+              "cas.",
+              md(ch.etages_seniors()[1].cout_net) + " de coût net "
+              "supplémentaire. C'est le prix de la cohérence."],
+             ["<strong>Exonérer les pensions</strong> de la contribution",
+              "Les retraités ne paient rien et ne reçoivent rien : le statu quo "
+              "pour eux, l'effort pour les seuls actifs.",
+              f"Le taux passe de {pourcent(b.taux)} à "
+              f"{pourcent(ch.taux_hors_pensions())} sur une assiette rétrécie "
+              "d'un cinquième."]],
+            ["texte long", "texte long", "texte long"],
+            "Les trois façons de traiter les retraités, et leur prix")
+        + g.note(
+            "<p>La deuxième option est la seule qui soit cohérente avec "
+            "l'architecture à trois étages que la note pose au §3, et la seule "
+            "qui fasse disparaître du même coup le cas type du retraité au "
+            "minimum vieillesse. Elle est aussi la plus chère. "
+            "<strong>Ce choix n'est pas tranché ici : il appelle la même "
+            "décision explicite que celle qui vient d'être prise sur "
+            'l\'impôt.</strong> <a href="#trous">Voir le montant qui '
+            "manque</a></p>", "vigilance")
+        + g.source("Note de doctrine, §3 — l'architecture à trois étages ; "
+                   "§15 — aucune hausse générale des pensions.")
     )
 
     return page(
@@ -2220,10 +2359,13 @@ def financement():
         [("net", "Du coût brut au coût net", net),
          ("taux", "Le taux, et le point de bascule", taux),
          ("arbitrage", "Ce que coûte chaque niveau de socle", arbitrage),
-         ("trous", "Les trois montants qui manquent", trous),
+         ("trous", "Les deux montants qui manquent", trous),
          ("exclus", "Ce que ce bouclage refuse de compter", exclus),
          ("contribution", "La contribution de solidarité", contribution),
-         ("progressivite", "Une progressivité sans barème", progressivite)],
+         ("ajout", "La contribution s'ajoute à l'impôt", ajout),
+         ("marginal", "Ce que ça fait au sommet du barème", marginal),
+         ("retraites", "Ce que ça fait aux retraités", retraites),
+         ("progressivite", "D'où vient la progressivité", progressivite)],
         tete=reperes)
 
 
@@ -2428,6 +2570,24 @@ def questions():
               g.source("Note de doctrine, §16 ; le périmètre de droit est propre "
                        "à ce site."),
               identifiant="q-etrangers"),
+        g.cle("La contribution remplace-t-elle l'impôt sur le revenu ?",
+              "Non, elle s'y ajoute. Le barème de l'impôt sur le revenu reste ce qu'il "
+              "est, et la contribution de solidarité vient au-dessus, au même taux pour "
+              "tous. C'est ce qui empêche la réforme de devenir un allègement d'impôt "
+              "pour les plus hauts revenus, et ce qui protège le premier décile.",
+              "<p>Cela a un prix, et il est écrit : au sommet du barème, les "
+              "prélèvements cumulés atteignent "
+              f"{pourcent_precis(ch.taux_marginal_sommet(ch.taux_publie()))}, "
+              "contre "
+              f"{pourcent_precis(ch.taux_marginal_sommet())} aujourd'hui. Cela "
+              "ne tient que si la contribution est déductible de l'assiette de "
+              "l'impôt, comme l'est déjà une partie de la CSG — sans quoi le "
+              "total dépasse le seuil des deux tiers au-delà duquel le juge "
+              "constitutionnel censure. "
+              '<a href="financement.html#marginal">Voir le calcul</a></p>',
+              g.source("Note de doctrine, §18 ; l'arbitrage est une décision "
+                       "du parti."),
+              identifiant="q-ir"),
         g.cle("Et outre-mer ?",
               "Le socle s'y applique de plein droit, au même montant. À Mayotte, où le "
               "RSA vaut aujourd'hui la moitié du barème métropolitain, c'est le gain le "

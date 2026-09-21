@@ -379,9 +379,9 @@ def cout_forfait(forfait_mensuel: float) -> float:
 #
 # Convention de calcul, la même pour tous : la contribution de solidarité est
 # prise sur le revenu du travail tel qu'il est versé aujourd'hui, toutes choses
-# égales par ailleurs. Elle ne modélise pas le sort de l'impôt sur le revenu,
-# que la note ne tranche pas — et c'est précisément le point que la page du
-# financement met en avant.
+# égales par ailleurs. L'impôt sur le revenu n'y apparaît pas parce qu'il NE
+# BOUGE PAS : le parti a tranché, la contribution s'y ajoute (voir §7). Ces
+# cas-types, écrits avant l'arbitrage, en étaient déjà le calcul direct.
 
 @dataclass(frozen=True)
 class CasType:
@@ -535,34 +535,86 @@ def cas_types(socle: float = SOCLE_CIBLE, taux: float | None = None,
     ]
 
 
-# -- 7. la question que la note ne tranche pas -------------------------------
+# -- 7. la contribution s'ajoute à l'impôt sur le revenu ---------------------
 #
-# C'est la conclusion du chiffrage, et elle est plus dure que le reste.
+# LE PARTI A TRANCHÉ, et c'est la décision la plus lourde du programme.
 #
-# La note ne dit nulle part si la contribution de solidarité REMPLACE l'impôt
-# sur le revenu ou s'y AJOUTE. Tant que ce n'est pas écrit, le même programme
-# se lit de deux façons opposées — et un adversaire choisira la pire.
+# La note créait une contribution de solidarité proportionnelle (§18) sans dire
+# si elle REMPLAÇAIT l'impôt sur le revenu ou si elle s'y AJOUTAIT. Les deux
+# lectures sortaient du même texte et ne décrivaient pas le même programme :
+# l'une faisait du socle le plus gros allègement jamais consenti au dernier
+# décile, l'autre préserve la progressivité du barème.
+#
+# La position retenue est la seconde : LA CONTRIBUTION S'AJOUTE. Le barème de
+# l'impôt sur le revenu reste ce qu'il est, et la contribution vient au-dessus.
+#
+# Ce choix ferme d'un coup l'attaque principale du programme. Il en ouvre deux
+# autres, qui sont calculées ici parce qu'elles ne sont pas des détails de
+# calibrage : le taux marginal au sommet du barème, et le sort des retraités.
 
-IR_RENDEMENT = 88.0   # Md€, impôt sur le revenu
+IR_RENDEMENT = 88.0   # Md€, impôt sur le revenu — inchangé par la réforme
+
+#: Les prélèvements qui se cumulent au sommet du barème, sur les revenus
+#: d'activité. ORDRES DE GRANDEUR : l'abattement de 10 % est plafonné, la
+#: contribution exceptionnelle sur les hauts revenus ne joue qu'au-delà de
+#: certains seuils, et le calcul exact dépend du foyer. La méthode est visible
+#: ci-dessous pour qu'on puisse la refaire.
+IR_TAUX_SOMMET = 0.45
+CEHR_TAUX_SOMMET = 0.04
+CSG_CRDS_ACTIVITE = 0.097
+CSG_DEDUCTIBLE = 0.068
+ASSIETTE_CSG_ACTIVITE = 0.9825
+
+#: Le seuil au-delà duquel un prélèvement risque la censure. Le Conseil d'État
+#: a synthétisé la jurisprudence du Conseil constitutionnel — décision
+#: 2012-662 DC, qui a censuré des taux marginaux de 75 % — par une règle
+#: simple : DEUX TIERS, quelle que soit la source du revenu.
+SEUIL_CONFISCATOIRE = 2 / 3
 
 
-def lectures_de_la_contribution(bouclage: Bouclage) -> list[tuple[str, str]]:
-    """Les deux lectures possibles, et ce que chacune produit."""
-    taux = bouclage.taux * 100
-    return [
-        ("La contribution remplace l'impôt sur le revenu",
-         f"Le prélèvement sur les revenus devient proportionnel, à {taux:.0f} % "
-         "environ. Un haut revenu, aujourd'hui imposé à 41 ou 45 % sur sa "
-         f"dernière tranche, paie {taux:.0f} %. La réforme devient le plus gros "
-         "allègement d'impôt jamais consenti au dernier décile, financé pour "
-         "partie par les prestations des premiers. C'est défendable, mais il "
-         "faut le savoir avant de l'être."),
-        ("La contribution s'ajoute à l'impôt sur le revenu",
-         f"Les {taux:.0f} points viennent au-dessus du barème actuel et de la "
-         "CSG. La progressivité est préservée, le premier décile est mieux "
-         "protégé, et le taux marginal du haut du barème devient "
-         "difficilement soutenable. C'est l'autre moitié de l'arbitrage."),
-    ]
+def taux_marginal_sommet(contribution: float | None = None,
+                         deductible: bool = True) -> float:
+    """Le taux marginal au sommet du barème, revenus d'activité.
+
+    `deductible` dit si la contribution de solidarité s'impute sur l'assiette
+    de l'impôt sur le revenu, comme le fait déjà la CSG pour sa part
+    déductible. Ce n'est pas un détail technique : c'est ce qui fait passer le
+    total au-dessus ou au-dessous du seuil des deux tiers.
+    """
+    if contribution is None:
+        contribution = 0.0
+    csg = CSG_CRDS_ACTIVITE * ASSIETTE_CSG_ACTIVITE
+    assiette_ir = 1 - CSG_DEDUCTIBLE * ASSIETTE_CSG_ACTIVITE
+    if deductible:
+        assiette_ir -= contribution
+    return (csg + contribution + IR_TAUX_SOMMET * assiette_ir
+            + CEHR_TAUX_SOMMET)
+
+
+#: La part de l'assiette large qui est constituée de pensions de retraite.
+#: C'est elle qui décide du sort des retraités sous ce choix, et le chiffre est
+#: un ordre de grandeur assumé.
+PART_PENSIONS = 0.20
+
+
+def taux_hors_pensions(socle_mensuel: float = SOCLE_CIBLE) -> float:
+    """Le taux qu'il faudrait si les pensions étaient exonérées.
+
+    Exonérer les pensions rétrécit l'assiette d'un cinquième ; le même montant
+    à financer sur une assiette plus petite se paie par un taux plus élevé, et
+    ce sont les actifs qui le paient.
+    """
+    return boucler(socle_mensuel).net / (ASSIETTE_LARGE * (1 - PART_PENSIONS))
+
+
+def pension_de_bascule(socle_mensuel: float = SOCLE_CIBLE) -> float:
+    """La pension au-dessous de laquelle un retraité gagne au change.
+
+    N'a de sens que si le socle senior est versé à tous : si le troisième étage
+    reste différentiel, un retraité paie la contribution sans rien recevoir, et
+    il n'y a pas de bascule — il n'y a qu'une perte.
+    """
+    return socle_mensuel / taux_publie(socle_mensuel)
 
 
 #: La contrainte de fond, qui ne dépend d'aucune hypothèse : un prélèvement

@@ -48,6 +48,21 @@ un paragraphe :
 | **Chiffrage** | Barèmes publics 2026, dépenses constatées | « Chiffrage — … » |
 | **Droit applicable** | Textes européens et internationaux, jurisprudence | « Droit applicable — … » |
 
+## Ce que le parti a tranché
+
+La note laissait trois montants et une question ouverts, et la question était la
+plus lourde : la contribution de solidarité **remplace-t-elle** l'impôt sur le
+revenu, ou s'y **ajoute-t-elle** ? Les deux lectures sortaient du même texte et
+ne décrivaient pas le même programme.
+
+**Elle s'y ajoute.** Le barème de l'impôt sur le revenu reste ce qu'il est.
+
+C'est une décision du parti, pas une lecture de la note, et le site la signale
+comme telle partout où elle apparaît. Elle est portée par `financement.html`
+avec ses deux conséquences chiffrées : le taux marginal au sommet du barème —
+qui impose que la contribution soit **déductible**, sans quoi le total franchit
+le seuil des deux tiers — et le sort des retraités, qui reste à trancher.
+
 Ni le chiffrage ni le droit n'engagent le parti, et ils n'ont pas le même statut
 l'un que l'autre : **le chiffrage dit ce que la note coûterait, le droit dit ce
 qu'elle ne peut pas faire.** Tous deux disent leurs sources à chaque fois, et
@@ -74,7 +89,7 @@ n'existe qu'une fois, dans `construire_site.py`.
 | `familles.html` | Le crédit familial, le bouclier monoparental, le couple | §7, §8, §9, §11 |
 | `protections.html` | Handicap, logement, chômage, retraites : ce qui reste à part | §10, §12, §14, §15 |
 | `nouveaux-residents.html` | La convergence, **les sept publics auxquels le droit interdit de l'appliquer**, la jurisprudence, le périmètre réel, et **un contrôle sans fichier nouveau** | §16, §17, §20.5 + droit applicable |
-| `financement.html` | Coût brut, **coût net**, taux de contribution, point de bascule, les trois montants qui manquent | §18, §20.1 + chiffrage |
+| `financement.html` | Coût brut, **coût net**, taux de contribution, point de bascule, **la contribution s'ajoute à l'impôt** et ce que ça coûte au sommet du barème | §18, §20.1 + chiffrage et droit |
 | `calendrier.html` | Les cinq années de bascule et les six points de vigilance | §19, §20 |
 | `questions.html` | Dix objections, le message politique, le glossaire | §21, §22 |
 
