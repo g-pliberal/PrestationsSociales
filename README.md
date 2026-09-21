@@ -11,7 +11,7 @@ rien à construire pour le servir : `index.html` à la racine suffit.
 
 ## La source
 
-Tout le contenu est tiré de l'unique document du dépôt,
+Le programme est tiré de l'unique document du dépôt,
 [`documents/note-revenu-universel.pdf`](documents/note-revenu-universel.pdf) —
 la note de doctrine « Revenu universel et refonte des prestations sociales »,
 22 sections. Le fichier est celui qui a été versé au dépôt, inchangé ; seul son
@@ -39,17 +39,63 @@ coût net, et n'écrivait nulle part ce qu'il était. **Il posait la question et
 laissait la réponse à quelqu'un d'autre.** C'est ce que `scripts/chiffrage.py`
 répare.
 
-Le dépôt porte depuis **deux espèces de phrases**, et elles ne partagent jamais
+Le dépôt porte depuis **trois espèces de phrases**, et elles ne partagent jamais
 un paragraphe :
 
 | | D'où elle vient | Comment elle se cite |
 | --- | --- | --- |
 | **Doctrine** | La note, 22 sections | « Note de doctrine, §18 » |
 | **Chiffrage** | Barèmes publics 2026, dépenses constatées | « Chiffrage — … » |
+| **Droit applicable** | Textes européens et internationaux, jurisprudence | « Droit applicable — … » |
 
-Le chiffrage n'engage pas le parti : il montre ce à quoi la note s'engagerait si
-on la calibrait de telle ou telle façon. Il dit ses hypothèses à chaque fois, et
-`scripts/verifier.py` refuse une page qui chiffrerait sans le signaler.
+## Ce que le parti a tranché
+
+La note laissait trois montants ouverts et une question. Deux réponses sont
+désormais écrites, et elles sont liées.
+
+**1. La contribution s'ajoute à l'impôt sur le revenu**, elle ne le remplace
+pas. Le barème reste ce qu'il est. C'est ce qui empêche la réforme de devenir un
+allègement d'impôt pour le dernier décile.
+
+**2. Le socle senior est servi à tous**, au même montant que le socle adulte.
+C'est la lecture cohérente avec l'architecture à trois étages du §3, et la seule
+tenable une fois la première décision prise : l'assiette comprend les pensions,
+et un retraité qui paie sans rien recevoir n'était pas défendable.
+
+**3. Un complément vieillesse** est versé par-dessus le socle senior, décalque
+du complément handicap du §10 : différentiel, il porte les ressources d'une
+personne âgée seule à 1043.59 €, le niveau de l'ASPA
+d'aujourd'hui. Il coûte environ 1 Md€ contre
+4.3 Md€ pour l'ASPA, parce que celle-ci est différentielle et que le
+socle servi à tous en absorbe l'essentiel.
+
+Ensemble, elles portent la contribution de 13 % à **19 %** et produisent une
+contrainte que personne n'avait vue : le prélèvement marginal au sommet du
+barème atteint **66.0 %**, contre un seuil de censure de
+66.7 %. D'où deux conséquences écrites dans
+`financement.html` — la contribution **doit être déductible** de l'assiette de
+l'impôt, et le socle est **plafonné à 589 €** par mois tant que
+le barème ne bouge pas.
+
+Ces décisions sont celles du parti, pas des lectures de la note, et le site les
+signale comme telles partout où elles apparaissent.
+
+**Ce qui reste à décider tient désormais en une question.** Le plafond a refermé
+le niveau du socle et le forfait enfant sur une même enveloppe —
+24.7 Md€ par an — qui s'achète une seule fois. Le
+chiffrage établit qu'à euro dépensé, le forfait enfant réduit environ quatre
+fois plus les pertes que le socle, parce qu'il se concentre sur 13,8 millions
+d'enfants là où le socle se répartit sur 54,7 millions de personnes. La décision
+appartient au parti ; `financement.html` la rend tranchable.
+
+Ni le chiffrage ni le droit n'engagent le parti, et ils n'ont pas le même statut
+l'un que l'autre : **le chiffrage dit ce que la note coûterait, le droit dit ce
+qu'elle ne peut pas faire.** Tous deux disent leurs sources à chaque fois, et
+`scripts/verifier.py` refuse une page qui dépasserait la note sans le signaler.
+
+Le site n'est pas une consultation juridique et ne s'en donne pas l'air : il cite
+les textes et les décisions, et laisse l'expertise à qui la fait — celle que la
+note appelle elle-même au §20.5.
 
 **Tout y est calculé, rien n'est recopié.** Changer une constante de
 `chiffrage.py` change les onze pages d'un coup, et aucun nombre du site ne peut
@@ -61,16 +107,16 @@ n'existe qu'une fois, dans `construire_site.py`.
 | Page | Ce qu'elle porte | Sections de la note |
 | --- | --- | --- |
 | `index.html` | Le diagnostic, la règle, les trois étages, les dix principes | §1, §2, §3, §22 |
-| `revenu-universel.html` | Le socle adulte : montant, individualisation, travail gagnant, prestations absorbées | §4, §5, §6, §12, §17 |
+| `revenu-universel.html` | Le socle adulte : montant, individualisation, travail gagnant, prestations absorbées, **l'outre-mer** et **la règle d'indexation** | §4, §5, §6, §12, §17 + chiffrage et droit |
 | `simulateur.html` | Le calculateur d'illustration, et la comparaison au système actuel | §5, §18 |
-| `cas-types.html` | Sept situations chiffrées, avant et après, **perdants compris** | chiffrage |
+| `cas-types.html` | 9 situations chiffrées, avant et après, **perdants compris**, Mayotte et pension médiane incluses | chiffrage |
 | `jeunes.html` | Le socle dès 18 ans, les APL étudiantes, les bourses | §6, §13, §20.3 |
-| `familles.html` | Le crédit familial, le bouclier monoparental, le couple | §7, §8, §9, §11 |
-| `protections.html` | Handicap, logement, chômage, retraites : ce qui reste à part | §10, §12, §14, §15 |
-| `nouveaux-residents.html` | La convergence sur dix ans, la résidence effective, le contrôle | §16, §17, §20.5 |
-| `financement.html` | Coût brut, **coût net**, taux de contribution, point de bascule, les trois montants qui manquent | §18, §20.1 + chiffrage |
+| `familles.html` | Le crédit familial, le bouclier monoparental, **combien vaut le forfait enfant**, le couple | §7, §8, §9, §11 + chiffrage |
+| `protections.html` | Handicap, logement, chômage, retraites : ce qui reste à part, et **le complément vieillesse** | §10, §12, §14, §15 + chiffrage |
+| `nouveaux-residents.html` | La convergence, **les sept publics auxquels le droit interdit de l'appliquer**, la jurisprudence, le périmètre réel, et **un contrôle sans fichier nouveau** | §16, §17, §20.5 + droit applicable |
+| `financement.html` | Coût brut, **coût net** des deux étages, taux, point de bascule, **les deux décisions du parti** et le plafond constitutionnel qu'elles imposent | §18, §20.1 + chiffrage et droit |
 | `calendrier.html` | Les cinq années de bascule et les six points de vigilance | §19, §20 |
-| `questions.html` | Dix objections, le message politique, le glossaire | §21, §22 |
+| `questions.html` | 15 objections, le message politique, le glossaire | §21, §22 + chiffrage |
 
 ## L'apparence
 
@@ -110,8 +156,9 @@ python3 scripts/verifier.py          # pages, liens, ancres, barèmes, chiffrage
   **fermé** : une classe absente de `moteur/style.css` ne sera pas mise en page.
 - `scripts/construire_site.py` — le texte du programme, page par page. C'est le
   seul endroit où une phrase du site existe.
-- `scripts/chiffrage.py` — les barèmes 2026, le bouclage budgétaire et les sept
-  cas-types. Le seul endroit où un **nombre calculé** du site existe.
+- `scripts/chiffrage.py` — les barèmes 2026, le bouclage budgétaire, les 9
+  cas-types, l'outre-mer et les projections d'indexation. Le seul endroit où un
+  **nombre calculé** du site existe.
 - `scripts/verifier.py` — refuse une page qui a dérivé de son générateur, un
   lien interne cassé, une ancre absente, des barèmes qui ne sont plus ceux du
   module, une page qui chiffre sans le dire.

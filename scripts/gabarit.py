@@ -312,6 +312,21 @@ def repere(texte: str) -> str:
     return f'<p class="discret">Chiffrage — {texte}</p>'
 
 
+def droit(texte: str) -> str:
+    """D'où vient une règle de DROIT que le site oppose au programme.
+
+    Troisième espèce de phrase, après la doctrine et le chiffrage, et elle
+    mérite son propre marqueur parce qu'elle n'a pas le même statut que les
+    deux autres. Le chiffrage dit ce que la note coûterait ; le droit dit ce
+    qu'elle ne peut pas faire. Le lecteur — et le juriste qui viendra vérifier —
+    doit voir la différence sans avoir à la deviner.
+
+    Le site n'est pas une consultation juridique et ne s'en donne pas l'air : il
+    cite les textes et les décisions, et laisse l'expertise à qui la fait.
+    """
+    return f'<p class="discret">Droit applicable — {texte}</p>'
+
+
 def plan(sections: list[tuple[str, str]]) -> str:
     """Le sommaire d'une page, déduit de ses sections : il ne peut pas dériver."""
     if len(sections) < 2:

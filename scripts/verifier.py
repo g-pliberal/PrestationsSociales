@@ -101,18 +101,28 @@ def baremes_servis() -> list[str]:
 
 
 def chiffrage_signale() -> list[str]:
-    """Les pages qui publient un chiffrage le signalent-elles comme tel.
+    """Les pages qui dépassent la note le signalent-elles comme tel.
 
-    Le site porte deux espèces de phrases — la doctrine, tirée de la note, et le
-    chiffrage, calculé à partir de barèmes publics — et le lecteur doit pouvoir
-    les distinguer. Une page qui chiffre sans le dire ferait passer un calcul du
-    site pour une position du parti.
+    Le site porte trois espèces de phrases — la doctrine, tirée de la note ; le
+    chiffrage, calculé à partir de barèmes publics ; le droit applicable, tiré
+    des textes et de la jurisprudence — et le lecteur doit pouvoir les
+    distinguer. Une page qui chiffre ou qui dit le droit sans le signaler ferait
+    passer un travail du site pour une position du parti.
     """
+    attendus = {
+        "financement.html": ["Chiffrage —"],
+        "cas-types.html": ["Chiffrage —"],
+        "nouveaux-residents.html": ["Droit applicable —"],
+        "revenu-universel.html": ["Chiffrage —", "Droit applicable —"],
+        "protections.html": ["Chiffrage —"],
+    }
     manquants = []
-    for fichier in ("financement.html", "cas-types.html"):
+    for fichier, marqueurs in attendus.items():
         html = (RACINE / fichier).read_text(encoding="utf-8")
-        if "Chiffrage —" not in html:
-            manquants.append(f"{fichier} : publie un chiffrage sans le signaler")
+        for marqueur in marqueurs:
+            if marqueur not in html:
+                manquants.append(
+                    f"{fichier} : porte du « {marqueur.strip(' —')} » sans le signaler")
     return manquants
 
 

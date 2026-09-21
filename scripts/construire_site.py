@@ -44,14 +44,32 @@ def md(milliards: float) -> str:
     return texte + f"{FINE}Md€"
 
 
+#: Le signe moins typographique. Python écrit les négatifs avec un trait
+#: d'union, qui est plus court, plus haut, et ne s'aligne pas sur la barre du
+#: plus dans une colonne de chiffres. Sur une page qui affiche des écarts, la
+#: différence se voit.
+MOINS = "\u2212"
+
+
 def eur(montant: float) -> str:
-    """Un montant en euros, arrondi à l'euro."""
-    return f"{montant:,.0f}".replace(",", FINE) + f"{FINE}€"
+    """Un montant en euros, arrondi à l'euro, avec un vrai signe moins."""
+    texte = f"{montant:,.0f}".replace(",", FINE) + f"{FINE}€"
+    return texte.replace("-", MOINS, 1) if montant < 0 else texte
 
 
 def pourcent(part: float) -> str:
     """Une part, en points de pourcentage entiers."""
     return f"{part * 100:.0f}{FINE}%"
+
+
+def pourcent_precis(part: float) -> str:
+    """Une part, à la décimale. Pour les cas où l'arrondi mangerait l'argument.
+
+    Entre un taux marginal de 62,7 % et un seuil de 66,7 %, arrondir à l'entier
+    laisse « 63 % » et « 67 % » : l'écart survit, mais la précision du calcul
+    disparaît, et c'est elle qu'on nous demandera.
+    """
+    return f"{part * 100:.1f}".replace(".", ",") + f"{FINE}%"
 
 
 def ancre(texte: str) -> str:
@@ -68,6 +86,34 @@ def ancre(texte: str) -> str:
                    .replace("ç", "c").replace("'", " ").replace("’", " "))
     mots = [mot for mot in re.split(r"[^a-z0-9]+", sans_accent) if mot]
     return "-".join(mots[:5])
+
+
+#: Les nombres que le site écrit en toutes lettres. Ils sont ici parce que le
+#: titre de la page des cas types en porte un : « Sept situations » écrit à la
+#: main devenait faux le jour où l'on ajoutait un cas, et personne ne l'aurait
+#: vu — c'est exactement la dérive que ce dépôt refuse ailleurs.
+LETTRES = ["zéro", "une", "deux", "trois", "quatre", "cinq", "six", "sept",
+           "huit", "neuf", "dix", "onze", "douze"]
+
+
+def en_lettres(nombre: int, majuscule: bool = False) -> str:
+    """Un petit nombre, écrit. Au-delà de douze, le chiffre fait l'affaire."""
+    mot = LETTRES[nombre] if nombre < len(LETTRES) else str(nombre)
+    return mot.capitalize() if majuscule else mot
+
+
+#: Les deux cas types que l'enveloppe restante peut déplacer, repérés par leur
+#: nom plutôt que par un rang écrit à la main : insérer un cas type devant eux
+#: décalerait silencieusement les chiffres de la page du financement.
+def _indice_cas(fragment: str) -> int:
+    for rang, cas in enumerate(ch.cas_types()):
+        if fragment in cas.nom:
+            return rang
+    raise KeyError(f"cas type introuvable : {fragment}")
+
+
+INDICE_CELIBATAIRE = _indice_cas("Célibataire sans emploi")
+INDICE_MONOPARENTALE = _indice_cas("Mère seule")
 
 
 def ecart_monoparental(forfait: float) -> str:
@@ -500,12 +546,170 @@ def socle():
                    "résidents</a>.")
     )
 
+    outremer = (
+        "<p>La note ne mentionne l'outre-mer dans aucune de ses vingt-deux "
+        "sections. C'est le silence le plus coûteux du document : <strong>trois "
+        "personnes sur dix y sont couvertes par les minima sociaux, contre une "
+        "sur dix en métropole</strong>, et un programme social muet sur ces "
+        "territoires sera lu comme un programme écrit contre eux.</p>"
+        + g.tableau(
+            ["Territoire", "Population", "Sous le seuil de pauvreté",
+             "Prix, écart avec la métropole", "RSA d'une personne seule"],
+            [[territoire.nom, f"{territoire.population:,}".replace(",", FINE),
+              f"{territoire.pauvrete * 100:.0f}{FINE}%",
+              f"+{territoire.ecart_prix * 100:.0f}{FINE}%",
+              eur(territoire.rsa) + ("" if territoire.aligne
+                                     else " <span class=\"badge\">réduit de "
+                                          "moitié</span>")]
+             for territoire in ch.DROM],
+            ["texte", "nombre", "nombre", "nombre", "nombre"],
+            "Les cinq départements et régions d'outre-mer")
+        + "<p>Le socle s'y applique de plein droit, et ces "
+        + f"{ch.population_drom():,}".replace(",", FINE)
+        + " habitants sont déjà compris dans l'hypothèse de population de la "
+        "note. Deux choses, en revanche, ne le sont pas.</p>"
+        + g.depliant(
+            "Mayotte — un barème réduit de moitié, que le socle supprime",
+            f"<p>Le RSA y vaut {eur(ch.RSA_MAYOTTE)} contre "
+            f"{eur(ch.RSA_PERSONNE_SEULE)} en métropole. Un droit universel ne "
+            "survit pas à un barème local réduit de moitié : c'est une "
+            "conséquence de la doctrine, pas une faveur — et c'est le gain le "
+            "plus spectaculaire de toute la réforme, dans le département le "
+            "plus pauvre de France, où plus des trois quarts de la population "
+            "vivent sous le seuil de pauvreté.</p>"
+            f"<p>L'alignement coûte de l'ordre de "
+            f"{md(ch.cout_alignement_mayotte())} bruts. C'est un ordre de "
+            "grandeur et il faut le dire comme tel : Mayotte est un "
+            "département très jeune, et la condition de séjour régulier y "
+            "réduit l'assiette dans une proportion que ce calcul ne connaît "
+            'pas. <a href="cas-types.html">Voir le cas type</a></p>',
+            "mayotte")
+        + g.depliant(
+            "Les collectivités qui sont compétentes chez elles",
+            "<p>Dans plusieurs collectivités, la protection sociale relève de "
+            "la collectivité elle-même. Ce n'est pas une nuance "
+            "administrative : <strong>le socle ne peut pas y être institué par "
+            "une décision de Paris.</strong></p>"
+            + g.tableau(
+                ["Collectivité", "Population", "Fondement", "Ce que ça implique"],
+                [[nom, f"{population:,}".replace(",", FINE), f"<em>{texte}</em>",
+                  consequence]
+                 for nom, population, texte, consequence
+                 in ch.COLLECTIVITES_AUTONOMES],
+                ["texte", "nombre", "texte", "texte long"],
+                "Les collectivités compétentes en matière de protection sociale")
+            + "<p>La voie est donc conventionnelle, pas législative. Le dire "
+            "évite une promesse qui ne pourrait pas être tenue, et que ces "
+            "territoires entendraient comme une de plus.</p>",
+            "collectivites")
+        + g.droit("Loi organique n° 99-209 du 19 mars 1999 pour la "
+                  "Nouvelle-Calédonie ; loi organique n° 2004-192 du 27 février "
+                  "2004 pour la Polynésie française.")
+    )
+
+    prix = (
+        "<p>Reste la question que personne ne posera poliment : un socle de "
+        f"{eur(ch.SOCLE_CIBLE)} achète-t-il la même chose à Fort-de-France "
+        "qu'à Limoges ? Non. Le niveau général des prix y est supérieur de 7 à "
+        "12 %, et le panier alimentaire métropolitain y coûte de "
+        f"<strong>{ch.ECART_PRIX_ALIMENTAIRE[0] * 100:.0f} à "
+        f"{ch.ECART_PRIX_ALIMENTAIRE[1] * 100:.0f} % de plus</strong>.</p>"
+        + g.points([
+            ("Un montant unique",
+             "C'est la position cohérente avec la doctrine, et elle se défend : "
+             "moduler le socle sur les prix locaux obligerait à le moduler "
+             "aussi en métropole — entre Paris et la Creuse, l'écart de coût "
+             "du logement est plus grand qu'entre la métropole et les Antilles "
+             "— et cette pente n'a pas de fin. Un socle qui varie par "
+             "territoire n'est plus un socle : c'est un barème, et le barème "
+             "est précisément ce que la réforme supprime."),
+            ("Le vrai levier est ailleurs",
+             "Si les prix sont le problème, c'est la politique des prix et de "
+             "la concurrence qui doit le traiter, pas la prestation. Le socle "
+             "ne peut pas compenser indéfiniment un marché fermé ; le dire "
+             "clairement vaut mieux que de le laisser croire."),
+            ("Ce qu'il faut assumer",
+             "Cette réponse est tenable, mais elle ne tient que si elle est "
+             "dite d'avance, et si le chapitre outre-mer du programme porte "
+             "effectivement une politique des prix. Sinon, c'est une esquive, "
+             "et elle sera entendue comme telle."),
+        ])
+        + g.repere("Insee, comparaison spatiale des niveaux de prix entre "
+                   "territoires français ; taux de pauvreté au seuil national, "
+                   "Insee. Couverture par les minima sociaux : Drees.")
+    )
+
+    indexation = (
+        f"<p>La note fixe une cible — {eur(ch.SOCLE_CIBLE)} — et ne dit rien de "
+        "ce qu'elle devient ensuite. C'est une omission d'un autre ordre que "
+        "les précédentes : <strong>un montant sans règle d'indexation n'est pas "
+        "un droit, c'est une ligne budgétaire.</strong> Elle peut être rabotée "
+        "chaque automne sans que personne n'ait jamais voté sa baisse.</p>"
+        + g.note(
+            "<p>Le précédent est connu de tous ceux à qui il est arrivé. "
+            "L'indexation automatique du point d'indice de la fonction "
+            "publique a été supprimée en 1983. S'il avait suivi l'inflation "
+            "depuis 2000, il vaudrait aujourd'hui environ 6,50 € ; il en vaut "
+            "4,92 €. <strong>Aucune loi n'a décidé cette baisse</strong> : "
+            "elle a eu lieu, gel après gel, parce qu'aucune règle ne "
+            "l'empêchait.</p>", "vigilance")
+        + "<p>Voici ce que devient le socle selon la règle qu'on lui donne. "
+        "Tout est en euros d'aujourd'hui : l'inflation disparaît des deux "
+        "côtés, et il ne reste que l'écart entre le socle et le niveau de vie "
+        "du pays.</p>"
+        + g.tableau(
+            ["Règle d'indexation", "Le socle dans 20 ans",
+             "Part du seuil de pauvreté", "Contribution", "Le défaut"],
+            [[regle.nom,
+              eur(ch.projeter(regle)[-1].socle_reel),
+              f"{ch.projeter(regle)[-1].part_du_seuil * 100:.0f}{FINE}% "
+              f"<span class=\"discret\">contre "
+              f"{ch.projeter(regle)[0].part_du_seuil * 100:.0f}{FINE}% "
+              "aujourd'hui</span>",
+              pourcent(ch.projeter(regle)[-1].taux),
+              regle.defaut]
+             for regle in ch.REGLES_INDEXATION],
+            ["texte", "nombre", "nombre", "nombre", "texte long"],
+            "Ce que devient le socle en vingt ans, en euros d'aujourd'hui")
+        + "<p>La première ligne est la règle actuelle des minima sociaux, et "
+        "c'est celle qu'on appliquerait par défaut. Elle a un effet qu'il faut "
+        "voir en entier : le socle garde son pouvoir d'achat, mais le seuil de "
+        "pauvreté, lui, suit le niveau de vie médian — qui progresse d'environ "
+        "0,8 % par an en euros constants. <strong>Le socle ne baisse pas ; "
+        "c'est le pays qui s'en éloigne.</strong></p>"
+        + g.engagements([
+            (f"{ch.projeter(ch.REGLES_INDEXATION[0])[-1].part_du_seuil * 100:.0f}"
+             f"{FINE}%",
+             "Le socle dans vingt ans, indexé sur les prix",
+             f"Contre {ch.projeter(ch.REGLES_INDEXATION[0])[0].part_du_seuil * 100:.0f}"
+             f"{FINE}% du seuil de pauvreté aujourd'hui."),
+            (pourcent(ch.projeter(ch.REGLES_INDEXATION[0])[-1].taux),
+             "La contribution, au même horizon",
+             f"Contre {pourcent(ch.taux_publie())} au départ : la réforme coûte "
+             "un peu moins chaque année, ce qui est la même chose que dire "
+             "qu'elle donne un peu moins."),
+        ])
+        + g.note(
+            "<p>D'où une recommandation qui ne coûte rien à écrire et beaucoup "
+            "à omettre : <strong>fixer la règle dans le texte qui crée le "
+            "socle, et lui adjoindre un plancher exprimé en part du seuil de "
+            "pauvreté.</strong> Une règle d'indexation se contourne par un "
+            "amendement de fin d'automne ; un plancher relatif oblige à dire "
+            "tout haut qu'on abaisse le socle. C'est la seule protection qui "
+            "ait jamais fonctionné.</p>")
+        + g.repere("Règle actuelle : art. L. 161-25 du code de la sécurité "
+                   "sociale — moyenne annuelle des prix hors tabac, sans baisse "
+                   "possible. Croissance du niveau de vie médian : environ "
+                   "0,8 % par an en euros constants depuis 2014, Insee.")
+    )
+
     return page(
         "revenu-universel.html",
         f"Le socle — {g.TITRE_SITE}",
         "Le revenu universel adulte : 550 € par mois, individuel, dès 18 ans, "
         "conservé intégralement quand on travaille, en remplacement du RSA, de la prime "
-        "d'activité et des aides au logement.",
+        "d'activité et des aides au logement — avec ce qu'il devient outre-mer et ce "
+        "qu'il devient dans vingt ans.",
         "Le socle",
         "Un revenu, une règle,<br>aucune condition de ressources",
         "Le revenu universel adulte est versé à chaque adulte qui vit en France. Il ne "
@@ -515,7 +719,10 @@ def socle():
          ("montant", "Combien, et combien ça coûte", montant),
          ("travail", "Pourquoi le travail devient toujours gagnant", travail),
          ("remplace", "Ce que le socle remplace", remplace),
-         ("residence", "Qui y a droit", residence)],
+         ("residence", "Qui y a droit", residence),
+         ("outremer", "L'outre-mer", outremer),
+         ("prix", "Un montant unique, des prix différents", prix),
+         ("indexation", "Ce que le socle devient dans vingt ans", indexation)],
         tete=reperes)
 
 
@@ -544,7 +751,7 @@ def simulateur():
         + g.liste("statut", "Votre situation", [
             ("adulte", "Adulte de 18 à 64 ans"),
             ("senior", "Retraité — socle senior"),
-        ], "adulte", "Le socle senior remplace l'ASPA, il n'augmente aucune pension.")
+        ], "adulte", "Le socle senior est versé à tous, en plus de la pension.")
         + g.champ("enfants", "Enfants à charge", "0",
                   "Chaque enfant ouvre un crédit familial.",
                   attributs={"min": "0", "max": "12", "step": "1",
@@ -697,7 +904,8 @@ def simulateur():
 # LA RÈGLE DE CETTE PAGE EST D'AFFICHER LES PERDANTS D'ABORD. Un jeu de
 # cas-types qui ne montre que des gagnants ne tient pas le premier
 # contre-exemple venu ; un jeu qui nomme ses perdants et dit ce qu'il propose
-# pour eux est le seul dont on garde la main. Trois des sept perdent.
+# pour eux est le seul dont on garde la main. Trois des huit perdent, et
+# le décompte du titre est calculé, jamais écrit à la main.
 
 def _cas_type(cas) -> str:
     """Une situation, en une carte : le détail, les deux régimes, l'écart.
@@ -726,13 +934,17 @@ def _cas_type(cas) -> str:
              ["<strong>Écart</strong>", badge,
               f"<strong>{signe} {eur(abs(cas.ecart))}</strong> "
               f"({signe} {abs(cas.part) * 100:.0f} %)"]],
-            ["texte", "long", "nombre"],
+            ["texte", "texte long", "nombre"],
             f"{cas.nom} : aujourd'hui et avec le socle")
         + f"<p>{cas.lecture}</p>"
         + (g.note(f"<p><strong>Réserve.</strong> {cas.reserve}</p>")
            if cas.reserve else "")
     )
-    return g.cle(cas.nom, cas.detail, corps,
+    detail_complet = (
+        f"{cas.detail} Les montants d'aujourd'hui sont ceux du barème "
+        f"applicable à {cas.territoire}, qui n'est pas celui de la métropole."
+        if cas.territoire else cas.detail)
+    return g.cle(cas.nom, detail_complet, corps,
                  identifiant="cas-" + ancre(cas.nom))
 
 
@@ -766,11 +978,12 @@ def cas_types():
             f"socle de {eur(ch.SOCLE_CIBLE)}, forfait enfant de "
             f"{eur(ch.FORFAIT_ILLUSTRATION)}, contribution de "
             f"{pourcent(b.taux)} sur le revenu du travail.",
-            "<strong>Rien d'autre ne bouge</strong> — la contribution est "
-            "prise sur le revenu tel qu'il est versé aujourd'hui. Le sort de "
-            "l'impôt sur le revenu n'est pas modélisé, parce que la note ne le "
-            'tranche pas. <a href="financement.html#contribution-et-impot">Voir '
-            "pourquoi c'est le point le plus important</a>.",
+            "<strong>L'impôt sur le revenu ne bouge pas</strong> — la "
+            "contribution s'y ajoute, elle ne le remplace pas, et elle est "
+            "prise ici sur le revenu tel qu'il est versé aujourd'hui. C'est la "
+            "position du parti, et ces cas types en sont le calcul direct. "
+            '<a href="financement.html#ajout">Voir la décision et ses deux '
+            "conséquences</a>.",
         ])
         + g.note(
             "<p><strong>Ce ne sont pas des droits, et ce ne sont pas des "
@@ -787,34 +1000,40 @@ def cas_types():
     )
 
     ceux_qui_perdent = (
-        "<p>Les trois situations ci-dessous perdent avec la calibration que la "
-        "note retient. Deux d'entre elles se ferment par une décision qui ne "
-        "coûte presque rien ; la troisième est l'arbitrage central du "
-        "programme.</p>"
+        f"<p>Les {en_lettres(len(perdants))} situations ci-dessous perdent avec "
+        "la calibration retenue, et elles ne perdent pas pour la même raison. "
+        "Trois n'ont aucun revenu du travail : le socle leur apporte moins que "
+        "l'empilement qu'il remplace. La quatrième est le salarié au SMIC, et "
+        "sa perte vient d'ailleurs — de la contribution de "
+        f"{pourcent(ch.taux_publie())} qu'appelle le financement des deux "
+        "étages. C'est le prix des décisions prises sur l'impôt et sur le "
+        "socle senior, et il se voit ici.</p>"
         + "".join(_cas_type(c) for c in perdants)
         + g.note(
-            "<p><strong>Ce que ces trois cas ont en commun : ils n'ont pas de "
-            "revenu du travail.</strong> Le socle leur apporte moins que "
-            "l'empilement actuel parce que cet empilement était, pour eux, "
-            "plus généreux que le socle — c'est la contrepartie arithmétique "
-            "de la simplicité. Le programme ne peut pas à la fois supprimer le "
-            "millefeuille et garantir que personne n'y perde, sauf à porter le "
-            f"socle à {eur(ch.SOCLE_NEUTRALITE)} et la contribution à "
+            "<p>Le programme ne peut pas à la fois supprimer le millefeuille "
+            "et garantir que personne n'y perde : il faudrait pour cela porter "
+            f"le socle à {eur(ch.SOCLE_NEUTRALITE)}, et la contribution à "
             f"{pourcent(ch.boucler(ch.SOCLE_NEUTRALITE).taux)}. "
-            '<a href="financement.html#arbitrage">Voir ce que coûte chaque '
-            "niveau de socle</a></p>", "vigilance")
+            "<strong>Ce n'est plus seulement cher : c'est fermé.</strong> "
+            "Au-delà d'un socle de "
+            f"{eur(ch.SOCLE_PLAFOND)}, le prélèvement marginal au sommet du "
+            "barème franchit le seuil des deux tiers au-delà duquel le juge "
+            "constitutionnel censure. "
+            '<a href="financement.html#marginal">Voir le plafond</a></p>',
+            "vigilance")
     )
 
     ceux_qui_gagnent = (
-        "<p>Les quatre autres situations gagnent ou sont à peu près neutres. "
-        "Les deux dernières sont les meilleurs arguments du programme, et le "
-        "site ne les chiffrait nulle part.</p>"
+        f"<p>Les {en_lettres(len(autres))} autres situations gagnent ou sont à "
+        "peu près neutres. Les dernières sont les meilleurs arguments du "
+        "programme, et le site ne les chiffrait nulle part.</p>"
         + "".join(_cas_type(c) for c in autres)
     )
 
     profil = (
-        "<p>Mis bout à bout, les sept cas dessinent un profil, et il vaut mieux "
-        "le connaître avant qu'un institut ne le publie.</p>"
+        f"<p>Mis bout à bout, les {en_lettres(len(cas))} cas dessinent un "
+        "profil, et il vaut mieux le connaître avant qu'un institut ne le "
+        "publie.</p>"
         + g.points([
             ("Les grands gagnants sont au milieu",
              "Le couple bi-actif est le plus gros gain de la série, parce que "
@@ -822,10 +1041,11 @@ def cas_types():
              "qui raisonne par foyer, ne verse presque rien. C'est mérité, "
              "c'est cohérent, et c'est très coûteux."),
             ("Les perdants sont tout en bas",
-             "Les trois perdants sont les trois situations sans revenu du "
-             "travail. Une réforme qui prend au premier décile pour "
-             "redistribuer au cinquième est défendable si on l'assume ; elle "
-             "est indéfendable si on la découvre en campagne."),
+             "Trois des perdants n'ont aucun revenu du travail, et le "
+             "quatrième est au SMIC. Une réforme qui prend au premier décile "
+             "et au salarié au salaire minimum pour financer le troisième "
+             "étage est défendable si on l'assume ; elle est indéfendable si "
+             "on la découvre en campagne."),
             ("Les jeunes sont le meilleur terrain",
              "L'étudiant décohabitant multiplie par trois sa ressource "
              "publique, et c'est le seul cas où le programme tient exactement "
@@ -837,7 +1057,8 @@ def cas_types():
         ])
         + g.note(
             f"<p>{ch.contrainte_structurelle()}</p>", "vigilance")
-        + g.repere("Écarts calculés à partir des sept situations ci-dessus, "
+        + g.repere(f"Écarts calculés à partir des {en_lettres(len(cas))} "
+                   "situations ci-dessus, "
                    f"pour un socle de {eur(ch.SOCLE_CIBLE)} et une contribution "
                    f"de {pourcent(b.taux)}.")
     )
@@ -845,12 +1066,13 @@ def cas_types():
     return page(
         "cas-types.html",
         f"Cas types — {g.TITRE_SITE}",
-        "Sept situations chiffrées aux barèmes 2026, avant et après la "
-        "réforme, perdants compris : célibataire au RSA, famille "
-        "monoparentale, minimum vieillesse, AAH, SMIC, couple bi-actif, "
-        "étudiant.",
+        f"{en_lettres(len(cas), majuscule=True)} situations chiffrées aux "
+        "barèmes 2026, avant et après la réforme, perdants compris : "
+        "célibataire au RSA, famille monoparentale, minimum vieillesse, "
+        "pension médiane, AAH, SMIC, couple bi-actif, Mayotte, étudiant.",
         "Cas types",
-        "Sept situations,<br>perdants compris",
+        f"{en_lettres(len(cas), majuscule=True)} situations,<br>perdants "
+        "compris",
         "Ce que chacun touche aujourd'hui, ce qu'il toucherait avec le socle, "
         "et l'écart. Les situations qui perdent sont en premier.",
         [("lecture", "Comment ces chiffres sont faits", lecture),
@@ -1041,6 +1263,51 @@ def familles():
                    "modestes et monoparentales.")
     )
 
+    arbitrage = (
+        "<p>Le forfait enfant est le dernier montant que la note laisse "
+        "ouvert, et il porte le sort des familles que le §20.2 désigne comme "
+        "le risque social principal de la réforme. Il n'est plus ouvert vers "
+        "le haut : le financement du socle laisse une enveloppe bornée, et "
+        "elle s'achète une seule fois.</p>"
+        + g.tableau(
+            ["Forfait enfant", "Ce qu'il fait à la famille monoparentale",
+             "Ce qu'il suppose"],
+            [[eur(200) + " / mois",
+              eur(ch.cas_types(forfait=200)[INDICE_MONOPARENTALE].ecart)
+              + " par mois",
+              "Un chiffre rond, sans justification à opposer."],
+             [eur(ch.FORFAIT_NEUTRE_BUDGET) + " / mois "
+              '<span class="badge proposition">retenu</span>',
+              eur(ch.cas_types()[INDICE_MONOPARENTALE].ecart) + " par mois",
+              "Le forfait qui coûte exactement ce que le crédit familial "
+              "remplace : il ne dépense rien de plus."],
+             [eur(ch.forfait_finance_par(ch.marge_disponible())) + " / mois",
+              "<strong>"
+              + eur(ch.ecart_apres_usage(ch.usages_de_la_marge()[1],
+                                         INDICE_MONOPARENTALE))
+              + " par mois</strong>",
+              "Toute l'enveloppe restante mise ici, et rien sur le socle. "
+              'C\'est le maximum atteignable.'],
+             [eur(500) + " / mois",
+              eur(ch.cas_types(forfait=500)[INDICE_MONOPARENTALE].ecart)
+              + " par mois",
+              "<strong>Hors d'atteinte</strong> : au-delà du plafond "
+              "constitutionnel."]],
+            ["texte", "nombre", "texte long"],
+            "Ce que chaque niveau de forfait fait à la famille monoparentale")
+        + g.note(
+            "<p><strong>À euro dépensé, le forfait enfant est environ quatre "
+            "fois plus efficace que le socle</strong> pour réduire les pertes, "
+            "parce qu'il se concentre sur treize millions huit cent mille "
+            "enfants là où le socle se répartit sur cinquante-cinq millions de "
+            "personnes. C'est l'argument le plus fort en faveur d'un forfait "
+            "élevé, et il ne dépend d'aucune préférence politique. "
+            '<a href="financement.html#enveloppe">Voir l\'enveloppe</a></p>')
+        + g.repere("Écarts recalculés pour chaque niveau de forfait à partir "
+                   "du cas type de la famille monoparentale sans emploi, aux "
+                   "barèmes 2026.")
+    )
+
     couple = (
         "<p>Le socle reste individualisé : il ne pénalise pas la mise en couple et ne "
         "crée pas de dépendance économique entre conjoints. Se mettre en ménage ne fait "
@@ -1084,6 +1351,7 @@ def familles():
         "la bascule.",
         [("credit", "Le crédit familial par enfant", credit),
          ("bouclier", "Le bouclier des familles monoparentales", bouclier),
+         ("arbitrage", "Combien vaut le forfait enfant", arbitrage),
          ("couple", "Couple, mariage, pensions alimentaires", couple)])
 
 
@@ -1110,6 +1378,11 @@ def protections():
              ["Santé urgente et santé publique", "Maintien à part"]],
             ["texte", "long"],
             "Les dispositifs que le socle ne remplace pas")
+        + "<p>Ce mécanisme — un socle commun, un complément ciblé par-dessus — "
+        "n'est pas propre au handicap. C'est la <strong>forme générale</strong> "
+        "que prend le traitement d'une vulnérabilité dans ce programme, et il "
+        'sert une seconde fois pour la vieillesse : <a href="#complement-'
+        'vieillesse">voir le complément vieillesse</a>.</p>' 
         + g.note(
             "<p>Cette distinction répond à l'objection la plus fréquente faite au revenu "
             "universel : l'idée qu'un montant unique remplacerait indistinctement toutes "
@@ -1199,6 +1472,55 @@ def protections():
                  "programme et d'un simulateur séparés</a>.</p>")
         + g.source("Note de doctrine, §15 — Retraites : RU senior et maîtrise de la "
                    "dépense.")
+        + '<div id="complement-vieillesse"><h3>Le complément vieillesse</h3>'
+        + "<p>Le socle senior est servi à tous, mais il est inférieur à "
+        f"l'actuel minimum vieillesse : {eur(ch.ASPA_PERSONNE_SEULE)} contre "
+        f"{eur(ch.SOCLE_CIBLE)}. Servi seul, il ferait perdre "
+        f"{eur(ch.ASPA_PERSONNE_SEULE - ch.SOCLE_CIBLE)} par mois à une "
+        "personne âgée sans ressources. <strong>Un complément vieillesse est "
+        "donc versé par-dessus</strong>, exactement comme l'AAH devient un "
+        "complément handicap.</p>"
+        + g.gestes([
+            "<strong>Il est différentiel</strong> — il porte les ressources "
+            f"jusqu'à {eur(ch.ASPA_PERSONNE_SEULE)}, et pas au-delà. C'est la "
+            "mécanique de l'ASPA qu'il remplace, et la seule qui soit "
+            "finançable : un complément forfaitaire versé à tous les retraités "
+            "coûterait plus de quatre-vingts milliards.",
+            "<strong>Il ne concerne qu'une minorité</strong> — le socle de "
+            f"{eur(ch.SOCLE_CIBLE)} couvre à lui seul la plus grande partie de "
+            "ce que l'ASPA versait. Ne reste à payer que ce qui dépasse.",
+            "<strong>Il garantit un plancher, pas un droit nouveau</strong> — "
+            "aucun bénéficiaire actuel du minimum vieillesse ne perd un euro, "
+            "et aucun n'en gagne.",
+        ])
+        + g.engagements([
+            (eur(ch.ASPA_PERSONNE_SEULE), "Le plancher garanti",
+             "Ressources minimales d'une personne âgée seule, socle et "
+             "complément réunis. C'est le niveau de l'ASPA d'aujourd'hui, à "
+             "l'euro près."),
+            (md(ch.cout_complement_vieillesse()), "Ce qu'il coûte",
+             f"Contre {md(ch.ASPA_COUT)} pour l'ASPA actuelle : le socle "
+             "servi à tous en absorbe l'essentiel."),
+        ])
+        + g.note(
+            "<p><strong>C'est le seul endroit du programme où une condition de "
+            "ressources survit, et il vaut mieux le dire que le laisser "
+            "trouver.</strong> Le principe 6 l'autorise — seules les "
+            "vulnérabilités spécifiques justifient des dispositifs séparés "
+            "(§20.6) — et la vieillesse sans ressources en est une. Mais la "
+            "contrepartie doit être assumée : comme l'ASPA, ce complément "
+            "décroît euro pour euro quand la pension augmente. Pour un "
+            "retraité, la pension ne se négocie pas, de sorte que l'effet de "
+            "seuil n'a pas la portée qu'il aurait sur un revenu d'activité — "
+            "c'est ce qui rend la mécanique acceptable ici, et nulle part "
+            "ailleurs.</p>", "vigilance")
+        + g.repere("Coût estimé à partir de la dépense d'ASPA constatée et du "
+                   "nombre de bénéficiaires. Le complément ne paie que la part "
+                   "de l'allocation actuelle qui excède le socle, et non "
+                   "l'écart entre le socle et le plafond — l'ASPA étant "
+                   "différentielle, ses bénéficiaires disposent déjà d'une "
+                   "pension.")
+        + "</div>"
     )
 
     return page(
@@ -1218,6 +1540,165 @@ def protections():
 
 
 # -- 7. les nouveaux résidents -----------------------------------------------
+#
+# CETTE PAGE PORTE LE DROIT APPLICABLE, troisième espèce de phrase du site après
+# la doctrine et le chiffrage.
+#
+# La note range la convergence sur dix ans parmi ses points de vigilance (§20.5)
+# et la renvoie à une expertise « au regard du droit constitutionnel et
+# européen ». Le site reprenait ce renvoi tel quel : il annonçait dix ans pour
+# tous, puis mentionnait en une incise des « exceptions prévues par la loi ou
+# par les engagements européens et internationaux ».
+#
+# Ces exceptions ne sont pas une incise. Elles décident du périmètre réel de la
+# mesure, et elles sont connues — les textes existent, les décisions sont
+# rendues. Les écrire soi-même, c'est garder la main sur ce que la mesure
+# devient. Les laisser découvrir en campagne, c'est voir la mesure phare
+# s'effondrer devant un juge au pire moment.
+#
+# LE SITE NE DONNE PAS UNE CONSULTATION JURIDIQUE et ne s'en donne pas l'air. Il
+# cite les textes, il cite les décisions, il dit ce qui reste — et il laisse
+# l'expertise à qui la fait.
+
+#: Les textes qui s'opposent au barème, et ce qu'il en reste pour chacun.
+#: L'ordre va du plus fermé au plus discutable : ce qui est acquis d'abord.
+EXCEPTIONS = [
+    ("Réfugiés statutaires",
+     "Convention de Genève, art. 23",
+     "Les États « accorderont aux réfugiés résidant régulièrement sur leur "
+     "territoire le même traitement en matière d'assistance et de secours "
+     "publics qu'à leurs nationaux ». Un socle monétaire de subsistance est de "
+     "l'assistance publique au sens le plus direct.",
+     "Rien. Accès au régime commun dès la reconnaissance du statut."),
+    ("Bénéficiaires de la protection subsidiaire",
+     "Directive 2011/95, art. 29",
+     "L'assistance sociale nécessaire est due comme aux nationaux. Le "
+     "paragraphe 2 permet de la limiter aux « prestations essentielles » pour "
+     "la seule protection subsidiaire.",
+     "Peu. Un socle qui garantit la subsistance sort difficilement des "
+     "prestations essentielles."),
+    ("Travailleurs de l'Union européenne, et leur famille",
+     "Règlement 492/2011, art. 7 § 2",
+     "Un travailleur d'un autre État membre bénéficie des mêmes avantages "
+     "sociaux que les travailleurs nationaux, dès le premier jour. La notion "
+     "d'avantage social est entendue largement par la Cour de justice.",
+     "Rien. Accès immédiat dès lors que la qualité de travailleur est établie."),
+    ("Résidents de longue durée, après cinq ans",
+     "Directive 2003/109, art. 11 — CJUE, Kamberaj, 2012",
+     "Égalité de traitement en matière d'assistance sociale. La limitation aux "
+     "« prestations essentielles » que l'article 11 § 4 autorise ne peut pas "
+     "écarter une prestation qui assure une existence digne à qui manque de "
+     "ressources.",
+     "Rien au-delà de la cinquième année. Les paliers « 6 à 8 ans » et "
+     "« 9 à 10 ans » du barème n'ont plus de support."),
+    ("Ressortissants du Maroc, d'Algérie, de Tunisie et de Turquie, salariés",
+     "Accords d'association — CJCE, Kziber, 1991",
+     "Les clauses d'égalité de traitement en matière de sécurité sociale de ces "
+     "accords sont d'effet direct : elles peuvent être invoquées directement "
+     "devant le juge national.",
+     "Discuté pour un socle non contributif ; acquis pour la part de "
+     "contributif que le socle absorberait."),
+    ("Citoyens de l'Union économiquement inactifs",
+     "Directive 2004/38, art. 24 § 2 — CJUE, Dano et Alimanovic",
+     "C'est la seule exception qui joue <strong>en faveur</strong> du "
+     "barème : l'assistance "
+     "sociale peut être refusée à un citoyen de l'Union qui ne remplit pas les "
+     "conditions de séjour de la directive.",
+     "Le barème peut s'appliquer — mais au plus jusqu'au séjour permanent, "
+     "acquis à cinq ans."),
+    ("Titulaires d'une convention bilatérale de sécurité sociale",
+     "Une quarantaine de conventions en vigueur",
+     "Chacune a son champ propre, et certaines couvrent des prestations que le "
+     "socle absorberait.",
+     "À expertiser convention par convention. C'est un travail, pas une "
+     "incise."),
+]
+
+#: Ce que les juges ont déjà dit. Les deux premières décisions portent sur des
+#: prestations que la réforme absorbe précisément — le minimum vieillesse et le
+#: RSA —, ce qui les rend difficilement contournables.
+JURISPRUDENCE = [
+    ("Conseil constitutionnel, 89-269 DC, 22 janvier 1990",
+     "L'allocation supplémentaire du Fonds national de solidarité — l'ancêtre "
+     "de l'ASPA — était réservée aux Français. Le Conseil a censuré : exclure "
+     "les étrangers résidant régulièrement en France « méconnaît le principe "
+     "constitutionnel d'égalité ». Un étranger en séjour stable et régulier a "
+     "droit à la protection sociale.",
+     "Le socle senior, servi à tous, remplace l'ASPA, qui descend de cette "
+     "allocation. La "
+     "décision porte donc directement sur le troisième étage de la réforme."),
+    ("Conseil constitutionnel, 2011-137 QPC, 17 juin 2011",
+     "Le Conseil a <strong>validé</strong> la condition de cinq ans de "
+     "résidence pour le RSA. "
+     "Mais il faut lire son motif : la différence de traitement est « en "
+     "rapport direct avec l'objet de la loi » parce que <em>le RSA a pour objet "
+     "l'insertion professionnelle</em> et que la stabilité de la présence sur "
+     "le territoire conditionne cette insertion.",
+     "C'est le point faible du barème, et il est contre-intuitif. Un revenu "
+     "<strong>universel</strong> n'a pas d'objet spécifique — c'est sa "
+     "définition et sa force. Le raisonnement exact qui a sauvé les cinq ans du "
+     "RSA ne se transpose donc pas à dix ans sur un socle universel."),
+    ("Conseil constitutionnel, 2023-863 DC, 25 janvier 2024",
+     "La loi « pour contrôler l'immigration » conditionnait les aides au "
+     "logement, l'APA et les prestations familiales à cinq ans de résidence "
+     "régulière, ou trente mois d'affiliation par le travail. L'article a été "
+     "censuré — mais comme <strong>cavalier législatif</strong>, c'est-à-dire "
+     "sur la procédure.",
+     "Le fond n'a donc pas été jugé. Ni validé, ni condamné : la question reste "
+     "entièrement ouverte, et c'est la seule bonne nouvelle de cette page."),
+    ("Cour européenne des droits de l'homme, Koua Poirrez c. France, 2003",
+     "La France a été condamnée pour avoir refusé l'allocation aux adultes "
+     "handicapés à un résident régulier au motif de sa nationalité. Une "
+     "différence de traitement fondée sur la seule nationalité exige des "
+     "« considérations très fortes ».",
+     "La note écarte l'exclusion « purement nationalitaire » (§16), ce qui est "
+     "la bonne intuition. Mais un barème qui trie par durée de séjour produit "
+     "un effet très proche, et c'est sous cet angle qu'il sera attaqué."),
+]
+
+
+#: Les référentiels qui existent DÉJÀ, et ce que chacun règle de la liste du
+#: §17. Le tableau n'est pas là pour faire savant : il est là pour montrer que
+#: chaque ligne de cette liste a son outil, et qu'aucune n'en appelle un neuf.
+REPERTOIRES = [
+    ("RNIPP — répertoire national d'identification des personnes physiques",
+     "Insee",
+     "L'état civil de toute personne née en France, et les décès. C'est la "
+     "source du numéro de sécurité sociale.",
+     "Identité, décès"),
+    ("SNGI — système national de gestion des identifiants, alimenté par le "
+     "Sandia",
+     "Cnav",
+     "Le référentiel d'identité de la sphère sociale, depuis 1988. Il reçoit le "
+     "RNIPP pour les personnes nées en France, et le Sandia — qui vérifie les "
+     "pièces d'état civil — pour celles nées à l'étranger. C'est lui qui "
+     "certifie le numéro.",
+     "Identité, unicité, usurpation"),
+    ("RNCPS — répertoire national commun de la protection sociale",
+     "90 organismes nationaux, 1 000 organismes gestionnaires",
+     "Le répertoire commun de la protection sociale, créé en 2008 et déployé "
+     "depuis 2012 : les affiliations de chacun, les prestations qu'il perçoit "
+     "et leurs montants.",
+     "Doublons, unicité du bénéficiaire, cumuls"),
+    ("DRM — dispositif de ressources mensuelles",
+     "Sphère sociale, depuis 2021",
+     "L'agrégat mensuel de la déclaration sociale nominative et des revenus de "
+     "remplacement. Il porte les données de <strong>50 millions de "
+     "personnes</strong>, déclarées par deux millions d'établissements et cinq "
+     "mille organismes — tous les mois.",
+     "Activité, ressources, signal de présence"),
+    ("AGDREF — gestion des dossiers des ressortissants étrangers en France",
+     "Ministère de l'intérieur",
+     "Les titres de séjour.",
+     "Régularité du séjour"),
+    ("Condition de résidence de la protection maladie",
+     "Caisses, art. R. 111-2 du code de la sécurité sociale",
+     "« Foyer ou lieu de séjour principal » en France : six mois par an, après "
+     "trois mois de présence. Le critère est écrit, il est jugé, et les caisses "
+     "l'appliquent tous les jours.",
+     "Résidence effective"),
+]
+
 
 def nouveaux_residents():
     principe = (
@@ -1242,6 +1723,15 @@ def nouveaux_residents():
         + g.note("<p>Pas de droit complet sans rattachement durable et effectif, mais pas "
                  "de contribution complète sans droits correspondants.</p>")
         + g.source("Note de doctrine, §16 — Accès des étrangers.")
+        + "<p>Ces « exceptions prévues par la loi ou par les engagements européens "
+        "et internationaux » tiennent ici en une incise. Elles ne sont pas une "
+        "incise : <strong>ce sont elles qui décident du périmètre réel de la "
+        "mesure.</strong> Les sections suivantes les écrivent, parce qu'un "
+        "barème annoncé pour tous puis rabaissé par un juge en pleine campagne "
+        "emporte la mesure et la crédibilité de tout le reste avec elle.</p>"
+        + g.droit("Le site cite les textes et les décisions ; il ne tient pas "
+                  "lieu d'expertise juridique, que la note appelle elle-même "
+                  "au §20.5.")
     )
 
     bareme = (
@@ -1264,12 +1754,156 @@ def nouveaux_residents():
         "paiement régulier de l'impôt et des cotisations, carte de résident, diplôme "
         "obtenu en France suivi d'une insertion professionnelle, création d'entreprise ou "
         "emploi de salariés.</p>"
-        "<p>Le régime applicable aux citoyens de l'Union européenne doit respecter les "
-        "engagements européens de la France. Le principe demeure que l'accès au socle "
-        "complet suppose un droit au séjour régulier et un rattachement réel à la société "
-        "française : les séjours courts ou dépourvus d'ancrage économique et social "
-        "n'ouvrent pas automatiquement le régime complet.</p>"
         + g.source("Note de doctrine, §16.")
+        + g.note(
+            "<p><strong>Les deux derniers paliers de ce tableau sont ceux qui "
+            "tiennent le moins.</strong> Au-delà de cinq ans de séjour régulier, "
+            "un ressortissant d'un pays tiers relève du statut de résident de "
+            "longue durée, qui ouvre l'égalité de traitement — et un citoyen de "
+            "l'Union a acquis le séjour permanent. Les lignes « 6 à 8 ans » et "
+            "« 9 à 10 ans » n'ont donc, pour l'essentiel, plus personne à qui "
+            "s'appliquer. <a href=\"#exceptions\">Voir pourquoi</a></p>",
+            "vigilance")
+        + g.droit("Directive 2003/109 relative aux résidents de longue durée, "
+                  "art. 11 ; directive 2004/38, art. 16, sur le séjour "
+                  "permanent acquis après cinq ans.")
+    )
+
+    exceptions = (
+        "<p>Sept publics échappent au barème, ou n'y sont soumis que "
+        "partiellement, en vertu de textes que la France ne peut pas écarter "
+        "seule. Six jouent contre la mesure ; un seul joue pour elle, et il est "
+        "signalé comme tel.</p>"
+        + g.tableau(
+            ["Public", "Texte", "Ce qu'il impose", "Ce qui reste du barème"],
+            [[public, f"<em>{texte}</em>", impose, reste]
+             for public, texte, impose, reste in EXCEPTIONS],
+            ["texte", "texte", "texte long", "texte long"],
+            "Les publics auxquels le barème ne peut pas s'appliquer, "
+            "et ce qu'il en reste")
+        + g.note(
+            "<p><strong>Ce qui reste du barème, une fois ces textes appliqués : "
+            "les ressortissants de pays tiers, sur leurs cinq premières années "
+            "de séjour régulier, hors réfugiés, hors travailleurs, hors "
+            "conventions bilatérales.</strong> C'est un périmètre réel, et il "
+            "est défendable. Mais ce n'est pas « dix ans pour les étrangers », "
+            "et l'écart entre les deux formulations est exactement ce qu'un "
+            "adversaire exploitera si nous le lui laissons.</p>", "vigilance")
+        + g.droit("Convention de Genève de 1951, art. 23 ; directive 2011/95, "
+                  "art. 29 ; règlement 492/2011, art. 7 § 2 ; règlement "
+                  "883/2004, art. 4 ; directive 2003/109, art. 11 ; directive "
+                  "2004/38, art. 24 § 2 ; accords d'association "
+                  "euro-méditerranéens.")
+    )
+
+    juges = (
+        "<p>Quatre décisions encadrent déjà la question. Deux portent sur des "
+        "prestations que la réforme absorbe précisément, ce qui les rend "
+        "difficiles à contourner.</p>"
+        + "".join(
+            g.depliant(titre, f"<p>{corps}</p>"
+                       + g.note(f"<p><strong>Pour nous.</strong> {portee}</p>"),
+                       identifiant="jp-" + ancre(titre))
+            for titre, corps, portee in JURISPRUDENCE)
+        + g.note(
+            "<p>La ligne de défense la plus solide n'est donc pas la durée, "
+            "c'est <strong>l'objet</strong>. Le Conseil constitutionnel a "
+            "validé une condition de résidence parce que la prestation avait un "
+            "but auquel la résidence se rattachait directement. Un socle "
+            "universel n'a pas ce but ; en revanche, la <strong>contribution "
+            "qui monte en même temps que le droit</strong> — la réciprocité que "
+            "la note met au cœur du §16 — est un argument que la jurisprudence "
+            "n'a jamais eu à examiner. C'est là qu'il faut porter l'effort, pas "
+            "sur le nombre d'années.</p>", "vigilance")
+        + g.droit("Décisions citées : 89-269 DC ; 2011-137 QPC ; 2023-863 DC ; "
+                  "CEDH, Koua Poirrez c. France, n° 40892/98.")
+    )
+
+    portee = (
+        "<p>Reste à situer la proposition par rapport à ce qui s'est déjà tenté. "
+        "C'est le meilleur test de réalisme disponible, et il est sévère.</p>"
+        + g.tableau(
+            ["Texte", "Durée proposée", "Prestations visées", "Sort"],
+            [["Loi immigration, décembre 2023",
+              "5 ans",
+              "Aides au logement, APA, prestations familiales",
+              "Censurée en janvier 2024, sur la procédure"],
+             ["Proposition de loi adoptée par le Sénat, mars 2025",
+              "2 ans",
+              "Prestations familiales, APA, aides au logement",
+              "Transmise à l'Assemblée. Exemptions prévues pour les étrangers "
+              "en emploi et les personnes protégées par le droit international"],
+             ["Note de doctrine du parti, §16",
+              "10 ans",
+              "Le socle, c'est-à-dire l'ensemble des prestations monétaires "
+              "générales",
+              "Exemptions renvoyées à une incise"]],
+            ["texte", "nombre", "texte long", "texte long"],
+            "Les trois tentatives, et leur sort")
+        + "<p>La proposition sénatoriale de mars 2025 est le point de "
+        "comparaison le plus utile : elle a été écrite par une commission des "
+        "lois <em>pour survivre au contrôle</em>, elle vise moins de "
+        "prestations, et elle s'arrête à deux ans en prévoyant ses exemptions. "
+        "La note en propose dix, sur un périmètre plus large, sans les écrire.</p>"
+        + g.points([
+            ("Annoncer le périmètre réel",
+             "Dire « cinq ans pour les ressortissants de pays tiers, hors "
+             "réfugiés, hors travailleurs, hors conventions » est moins "
+             "spectaculaire que « dix ans », mais c'est tenable devant un juge "
+             "et devant un contradicteur. L'inverse ne l'est pas."),
+            ("Porter l'argument sur la réciprocité",
+             "La contribution qui monte avec le droit est l'idée neuve du §16, "
+             "et aucune décision ne l'a encore examinée. C'est la meilleure "
+             "chance de la mesure, et elle est aujourd'hui noyée dans un "
+             "tableau de pourcentages."),
+            ("Traiter le socle senior à part",
+             "La décision de 1990 porte sur l'ancêtre de l'ASPA. Appliquer le "
+             "barème de convergence au socle senior, c'est rouvrir exactement "
+             "la question qui a déjà été tranchée, et dans le sens contraire."),
+            ("Chiffrer avant de promettre",
+             "La note dit elle-même que ce mécanisme n'est pas le cœur du "
+             "financement (§16). Si son périmètre réel se réduit aux cinq "
+             "premières années d'un public restreint, son rendement est "
+             "marginal — et il faut alors décider s'il vaut le coût politique "
+             "et juridique qu'il porte."),
+        ])
+        + g.droit("Loi n° 2024-42 du 26 janvier 2024 et décision 2023-863 DC ; "
+                  "proposition de loi n° 299 (2024-2025), adoptée par le Sénat "
+                  "le 18 mars 2025.")
+    )
+
+    compte = (
+        "<p>Le <strong>compte individuel de solidarité</strong> est le "
+        "mécanisme par lequel la contribution excédant les droits immédiats est "
+        "créditée puis restituée à l'accès au régime commun. C'est l'idée la "
+        "plus originale du §16, et celle qui résiste le moins à sa propre "
+        "doctrine.</p>"
+        + g.points([
+            ("Il crée une créance sur l'État",
+             "Un crédit individuel, suivi sur dix ans, mobilisable à la "
+             "naturalisation. Il faut en fixer le régime : est-il revalorisé, "
+             "transmissible, remboursable au départ, opposable en cas de "
+             "changement de statut ?"),
+            ("Il contredit le principe 6",
+             "La note interdit de recréer les dispositifs que la réforme "
+             "supprime, et n'admet d'exception que pour les vulnérabilités "
+             "spécifiques (§20.6). Un compte individuel géré sur dix ans pour "
+             "un public restreint est précisément un dispositif séparé de plus."),
+            ("Son assiette se réduit avec les exceptions",
+             "Si le barème ne s'applique plus qu'aux cinq premières années d'un "
+             "public restreint, le compte porte sur peu de personnes et peu "
+             "d'années. Son coût de gestion peut dépasser ce qu'il déplace."),
+        ])
+        + g.note(
+            "<p>Deux issues, et il vaut mieux choisir que subir : <strong>soit "
+            "le compte est assumé</strong> et il lui faut un régime juridique "
+            "écrit, <strong>soit la réciprocité passe par la contribution "
+            "elle-même</strong> — on ne prélève pas ce qui n'ouvre pas de "
+            "droits — et le compte disparaît. La seconde est plus simple, plus "
+            "conforme au principe 6, et tout aussi fidèle à la formule du "
+            "§16.</p>", "vigilance")
+        + g.source("Note de doctrine, §16 — compte individuel de solidarité ; "
+                   "§20.6 — risque de reconstitution du millefeuille.")
     )
 
     hors = (
@@ -1290,12 +1924,6 @@ def nouveaux_residents():
             "<p>Ce mécanisme n'est pas le cœur du financement de la réforme : c'est une "
             "clause de soutenabilité, de réciprocité et d'acceptabilité. Il évite à la "
             "fois le guichet ouvert immédiat et la contribution sans droits.</p>")
-        + g.note(
-            "<p>La note identifie ici un risque juridique : la transition sur dix ans "
-            "devra être expertisée au regard du droit constitutionnel et européen. La "
-            "doctrine reste fondée sur la résidence effective, la contribution, l'accès "
-            "progressif aux droits et la réciprocité — <strong>non sur une exclusion "
-            "purement nationalitaire</strong>.</p>", "vigilance")
         + g.source("Note de doctrine, §16 et §20.5 — Risque juridique.")
     )
 
@@ -1326,21 +1954,124 @@ def nouveaux_residents():
         + g.source("Note de doctrine, §17 — Résidence effective, fraude et contrôle.")
     )
 
+    repertoires = (
+        "<p>Le calendrier de la note prévoit, dès la première année, la "
+        "« préparation du registre de résidence effective » (§19). Ces quatre "
+        "mots méritent d'être précisés avant que quelqu'un d'autre ne s'en "
+        "charge, parce qu'ils se lisent aujourd'hui comme la création d'un "
+        "<strong>fichier national de la population entière</strong> — et que ce "
+        "n'est ni nécessaire, ni constitutionnellement sûr, ni conforme à ce que "
+        "ce programme dit vouloir.</p>"
+        + g.encadre('<p class="chapeau" style="margin:0">Le socle ne crée aucun '
+                    "répertoire nouveau. Il s'appuie sur ceux qui existent, et "
+                    "sur une condition de résidence qui est déjà écrite dans le "
+                    "code de la sécurité sociale.</p>")
+        + "<p>Chaque ligne de la liste ci-dessus a déjà son outil, et ces outils "
+        "fonctionnent :</p>"
+        + g.tableau(
+            ["Outil", "Qui le tient", "Ce qu'il fait", "Ce qu'il règle"],
+            [[outil, f"<em>{tenu}</em>", fait, regle]
+             for outil, tenu, fait, regle in REPERTOIRES],
+            ["texte", "texte", "texte long", "texte"],
+            "Les référentiels existants, et ce que chacun règle")
+        + "<p>Ce que la réforme doit demander n'est donc pas un fichier : c'est "
+        "une <strong>autorisation d'usage</strong> — un décret en Conseil d'État "
+        "pris après avis de la CNIL — et, le cas échéant, une extension du champ "
+        "du répertoire commun. C'est un travail juridique ordinaire, pas un "
+        "projet informatique d'État.</p>"
+        + "<p>Un registre neuf ne se heurterait d'ailleurs pas seulement à une "
+        "objection politique. Il se heurterait à une décision déjà rendue.</p>"
+        + g.depliant(
+            "Conseil constitutionnel, 2012-652 DC, 22 mars 2012",
+            "<p>La loi relative à la protection de l'identité créait un fichier "
+            "central réunissant l'état civil, le domicile, la taille, la "
+            "couleur des yeux, deux empreintes et la photographie de tous les "
+            "Français. Le Conseil l'a censuré comme contraire au droit au "
+            "respect de la vie privée, pour trois motifs :</p>"
+            + g.gestes([
+                "<strong>l'ampleur</strong> — tous les Français y figuraient ;",
+                "<strong>la portée</strong> — il était consultable à d'autres "
+                "fins que celle qui le justifiait ;",
+                "<strong>la nécessité</strong> — constituer un tel fichier "
+                "n'était pas nécessaire, dès lors que d'autres techniques "
+                "permettaient d'atteindre le même but.",
+            ])
+            + g.note(
+                "<p><strong>Pour nous.</strong> Les trois motifs s'appliquent "
+                "mot pour mot à un registre de résidence de toute la "
+                "population. Le troisième est le plus dangereux, parce que les "
+                "« autres techniques » ne sont pas hypothétiques ici : elles "
+                "tournent déjà, tous les mois, pour cinquante millions de "
+                "personnes.</p>"),
+            identifiant="jp-fichier-central")
+        + g.note(
+            "<p>Un parti qui propose « moins de guichets, moins de seuils, plus "
+            "de liberté » et se donne pour objet un État social « moins "
+            "intrusif » ne peut pas ouvrir sa réforme par la création d'un "
+            "fichier national. Ce serait la première contradiction que l'on "
+            "nous opposerait, et elle serait fondée.</p>", "vigilance")
+        + g.droit("Décision n° 2012-652 DC du 22 mars 2012, loi relative à la "
+                  "protection de l'identité ; art. L. 114-12-1 du code de la "
+                  "sécurité sociale pour le répertoire commun ; art. R. 111-2 "
+                  "du même code pour la condition de résidence.")
+    )
+
+    moins = (
+        "<p>Reste le point que le programme ne fait valoir nulle part, et qui "
+        "est pourtant l'un de ses meilleurs : <strong>un socle universel a "
+        "besoin de beaucoup moins de données personnelles qu'une prestation "
+        "sous condition de ressources.</strong></p>"
+        + g.tableau(
+            ["Ce que l'administration doit savoir", "Aujourd'hui", "Avec le socle"],
+            [["Vos ressources, tous les trimestres", "Oui", "Non"],
+             ["Votre loyer, votre bail, votre zone", "Oui", "Non"],
+             ["La composition de votre foyer", "Oui", "Non"],
+             ["Votre situation conjugale", "Oui", "Non"],
+             ["Les ressources de votre conjoint", "Oui", "Non"],
+             ["Que vous êtes vivant, unique et résident", "Oui", "Oui"]],
+            ["texte long", "texte", "texte"],
+            "Ce que chaque système exige de savoir sur vous")
+        + "<p>C'est la traduction concrète de ce que dit le §17 — le contrôle "
+        "« change de nature ». Il ne s'agit pas d'ajouter une surveillance de la "
+        "résidence à celle des ressources : il s'agit de <strong>supprimer la "
+        "seconde</strong>, et de ne garder que la première, qui existe déjà. "
+        "L'individualisation du socle y ajoute un effet que la note relève au "
+        "§11 sans l'exploiter : en cessant de dépendre du foyer, le droit cesse "
+        "d'obliger l'administration à enquêter sur la vie privée et familiale de "
+        "qui le demande.</p>"
+        + g.note(
+            "<p>Formulée ainsi, la mesure se défend d'elle-même : "
+            "<strong>l'État social cesse de vous demander avec qui vous vivez, "
+            "ce que vous gagnez et combien vous payez de loyer. Il vérifie que "
+            "vous existez, une seule fois, et que vous vivez ici.</strong> "
+            "C'est moins de contrôle, pas plus.</p>")
+        + g.source("Note de doctrine, §11 — solidarités privées et intrusion "
+                   "administrative ; §17 — le contrôle change de nature.")
+    )
+
     return page(
         "nouveaux-residents.html",
         f"Nouveaux résidents — {g.TITRE_SITE}",
-        "Droits et devoirs progressifs sur dix ans : le barème de convergence vers le "
-        "socle complet, le compte individuel de solidarité, et les protections "
-        "maintenues hors du revenu universel.",
+        "Droits et devoirs progressifs : le barème de convergence, les sept publics "
+        "auxquels le droit européen et international interdit de l'appliquer, la "
+        "jurisprudence, le périmètre réel — et un contrôle qui s'appuie sur les "
+        "répertoires existants plutôt que sur un fichier nouveau.",
         "Nouveaux résidents",
         "Les droits et les devoirs<br>avancent ensemble",
-        "Un socle immédiat et entier pour les citoyens français résidant en France ; pour "
-        "les résidents étrangers, une convergence sur dix ans où l'accès aux droits et la "
-        "contribution montent du même pas.",
+        "Un socle immédiat et entier pour les citoyens français résidant en France ; "
+        "pour les résidents étrangers, une convergence où l'accès aux droits et la "
+        "contribution montent du même pas — et le périmètre exact que le droit laisse "
+        "à cette convergence.",
         [("principe", "Le principe", principe),
          ("bareme", "Le barème de convergence", bareme),
+         ("exceptions", "À qui le barème ne peut pas s'appliquer", exceptions),
+         ("juges", "Ce que les juges ont déjà tranché", juges),
+         ("portee", "Le périmètre réel, et ce qu'il faut en faire", portee),
+         ("compte", "Le compte individuel de solidarité", compte),
          ("hors", "Ce qui reste hors du barème", hors),
-         ("controle", "Résidence effective et contrôle", controle)])
+         ("controle", "Résidence effective et contrôle", controle),
+         ("repertoires", "Sans fichier nouveau", repertoires),
+         ("moins", "Un socle demande moins de données", moins)])
 
 
 # -- 8. le financement -------------------------------------------------------
@@ -1365,10 +2096,26 @@ def financement():
          "Sur une assiette large, de l'ordre de celle de la CSG."),
     ])
 
-    lignes = [[f"<strong>Coût brut</strong> — {ch.SOCLE_CIBLE} € × 12 × 40 millions",
-               f"<strong>{md(b.brut)}</strong>", ""]]
+    adulte = ch.boucler_etage()
+    lignes = [
+        [f"<strong>Socle adulte</strong> — {ch.SOCLE_CIBLE} € × 12 × 40 millions",
+         f"<strong>{md(adulte.brut)}</strong>",
+         "Les 18-64 ans, selon l'hypothèse de population de la note (§4)."],
+        [f"<strong>Socle senior</strong> — {ch.SOCLE_CIBLE} € × 12 × 14,7 millions",
+         f"<strong>{md(ch.cout_brut(ch.SOCLE_CIBLE, ch.POPULATION_65_PLUS) / ch.MILLIARD)}</strong>",
+         "Le troisième étage, servi à tous. La note le pose (§3) sans le "
+         'chiffrer. <a href="#retraites">Voir la décision</a>'],
+        ["<strong>Coût brut total</strong>", f"<strong>{md(b.brut)}</strong>", ""],
+    ]
     for poste in ch.ABSORBEES:
         lignes.append([poste.libelle, f"− {md(poste.milliards)}", poste.detail])
+    lignes.append(["ASPA", f"− {md(ch.ASPA_COUT)}",
+                   "Absorbée par le socle senior (note, §15)."])
+    lignes.append(["Complément vieillesse",
+                   f"+ {md(ch.cout_complement_vieillesse())}",
+                   "Le plancher qui porte les ressources d'une personne âgée "
+                   f"seule à {eur(ch.ASPA_PERSONNE_SEULE)}. "
+                   '<a href="protections.html#complement-vieillesse">Voir</a>'])
     lignes.append(["<strong>Coût net à financer</strong>",
                    f"<strong>{md(b.net)}</strong>",
                    "Le seul chiffre qui commande le reste."])
@@ -1381,7 +2128,7 @@ def financement():
         "ligne porte sa source.</p>"
         + g.tableau(
             ["Poste", "Montant annuel", "Ce que c'est"],
-            lignes, ["long", "nombre", "long"],
+            lignes, ["texte long", "nombre", "texte long"],
             "Du coût brut au coût net du socle adulte")
         + g.note(
             "<p><strong>Les prestations familiales n'apparaissent pas dans ce "
@@ -1440,12 +2187,17 @@ def financement():
                if c.socle == ch.SOCLE_MARCHE else
                "Cible de régime stabilisé (note, §4)."
                if c.socle == ch.SOCLE_CIBLE else
-               "Le socle auquel plus personne ne perd — voir les "
-               '<a href="cas-types.html">cas types</a>.'
+               "<strong>Le plafond</strong> : au-delà, le prélèvement marginal "
+               "au sommet du barème franchit le seuil des deux tiers. "
+               '<a href="#marginal">Voir le calcul</a>'
+               if c.socle == ch.SOCLE_PLAFOND else
+               "Le socle auquel plus personne ne perd — mais il est "
+               "<strong>hors d'atteinte</strong> : sa contribution est "
+               "largement au-dessus du plafond ci-dessus."
                if c.socle == ch.SOCLE_NEUTRALITE else
                "Haut de la fourchette citée par la note.")]
              for c in ch.calibrations()],
-            ["texte", "nombre", "nombre", "nombre", "long"],
+            ["texte", "nombre", "nombre", "nombre", "texte long"],
             "Ce que coûte chaque niveau de socle")
         + g.note(
             f"<p>{ch.contrainte_structurelle()}</p>", "vigilance")
@@ -1456,28 +2208,14 @@ def financement():
     )
 
     trous = (
-        "<p>Trois montants manquent au programme, et l'ordre de grandeur de "
-        "chacun est tel qu'aucun chiffrage ne tient tant qu'ils ne sont pas "
-        "écrits. Les voici, avec ce que chaque réponse coûte.</p>"
-        + g.depliant(
-            "Le socle senior — un écart de 93 milliards",
-            "<p>La note pose trois étages (§3) et n'en chiffre qu'un. Le coût "
-            f"brut de {md(b.brut)} ne couvre que les 18-64 ans. Pour le "
-            "troisième étage, deux lectures, et elles ne coûtent pas la même "
-            "chose :</p>"
-            + g.tableau(
-                ["Lecture", "Montant servi", "Coût net", "Conséquence"],
-                [[etage.libelle, etage.montant, md(etage.cout_net),
-                  etage.consequence]
-                 for etage in ch.etages_seniors()],
-                ["long", "texte", "nombre", "long"],
-                "Les deux lectures possibles du socle senior")
-            + "<p>Tant que ce n'est pas tranché, un lecteur qui applique le "
-            f"socle adulte lit une baisse de {eur(ch.ASPA_PERSONNE_SEULE)} à "
-            f"{eur(ch.SOCLE_CIBLE)} sur le minimum vieillesse. Écrire que le "
-            "socle senior est servi au niveau de l'ASPA ferme la question pour "
-            f"{md(ch.ASPA_COUT)}.</p>",
-            "socle-senior")
+        "<p>La note laissait trois montants ouverts. Deux sont désormais "
+        "écrits : la contribution "
+        '<a href="#ajout">s\'ajoute à l\'impôt sur le revenu</a>, et le socle '
+        'senior <a href="#retraites">est servi à tous</a>. Reste le '
+        "troisième — et il n'est plus ouvert vers le haut : "
+        '<a href="#enveloppe">l\'enveloppe disponible</a> le borne à '
+        f"{eur(ch.forfait_finance_par(ch.marge_disponible()))} par mois, "
+        "au-delà desquels le plafond constitutionnel est franchi.</p>"
         + g.depliant(
             "Le forfait enfant — le montant qui décide du sort des monoparentales",
             "<p>Le crédit familial remplace "
@@ -1495,34 +2233,21 @@ def financement():
                            - ch.CONTREPARTIE_FAMILIALE_TOTALE)),
                   ecart_monoparental(forfait)]
                  for forfait in ch.FORFAITS_COMPARES],
-                ["texte", "nombre", "nombre", "long"],
+                ["texte", "nombre", "nombre", "texte long"],
                 "Ce que coûte chaque niveau de forfait enfant")
             + "<p>La lecture est sans échappatoire : le forfait qui équilibre "
             f"le bloc familial est de {eur(ch.FORFAIT_NEUTRE_BUDGET)}, celui "
-            "qui protège les familles monoparentales est nettement au-dessus, "
-            "et l'écart entre les deux est le prix de la promesse faite au "
-            "§7.</p>",
+            "qui rendrait la famille monoparentale strictement neutre est "
+            "au-dessus du plafond, et le maximum atteignable est de "
+            f"{eur(ch.forfait_finance_par(ch.marge_disponible()))} — soit "
+            f"{eur(ch.ecart_apres_usage(ch.usages_de_la_marge()[1], INDICE_MONOPARENTALE))} "
+            "par mois pour cette famille, contre "
+            f"{eur(ch.cas_types()[INDICE_MONOPARENTALE].ecart)} aujourd'hui. "
+            'C\'est <a href="#enveloppe">tout ce que l\'enveloppe permet</a>, '
+            "et c'est beaucoup.</p>",
             "forfait-enfant")
-        + g.depliant(
-            "La contribution et l'impôt sur le revenu — la question non tranchée",
-            "<p>La note crée une contribution de solidarité proportionnelle "
-            "(§18) sans jamais dire si elle <strong>remplace</strong> l'impôt "
-            "sur le revenu ou si elle s'y <strong>ajoute</strong>. Les deux "
-            "lectures sont ouvertes par le même texte, et elles ne décrivent "
-            "pas le même programme.</p>"
-            + g.tableau(
-                ["Lecture", "Ce qu'elle produit"],
-                [[titre, corps]
-                 for titre, corps in ch.lectures_de_la_contribution(b)],
-                ["texte", "long"],
-                "Les deux lectures ouvertes par la note")
-            + "<p>C'est le seul point de ce chiffrage qu'un calcul ne peut pas "
-            "fermer : il appelle une décision. Tant qu'elle n'est pas écrite, "
-            "chacun peut attribuer au programme celle des deux qui l'arrange, "
-            "et ce ne sera pas la nôtre.</p>",
-            "contribution-et-impot")
-        + g.repere("Rendement de l'impôt sur le revenu : "
-                   f"{md(ch.IR_RENDEMENT)} en 2024.")
+        + g.repere("Montants remplacés par le crédit familial : CNAF et "
+                   "dépenses fiscales.")
     )
 
     exclus = (
@@ -1586,11 +2311,15 @@ def financement():
     )
 
     progressivite = (
-        "<p>Le socle permet de reconstruire une progressivité effective "
-        "<strong>avec un impôt proportionnel</strong>. Elle n'est plus produite "
-        "par un barème à tranches, mais par la combinaison d'un montant fixe "
-        "versé à tous et d'un prélèvement au même taux pour tous. Le point de "
-        f"bascule est à {eur(b.bascule_mensuelle)} par mois :</p>"
+        "<p>La progressivité de la réforme a désormais <strong>deux "
+        "sources</strong>, et il faut les distinguer pour répondre aux "
+        "objections qu'on fait à chacune.</p>"
+        "<p>La première est le barème de l'impôt sur le revenu, qui ne bouge "
+        "pas. La seconde est propre au socle : un montant fixe versé à tous, "
+        "repris par un prélèvement au même taux pour tous, produit à lui seul "
+        "une progressivité — sans tranches, sans seuils, sans condition de "
+        f"ressources. Son point de bascule est à {eur(b.bascule_mensuelle)} "
+        "par mois :</p>"
         + g.tableau(
             ["Revenu mensuel du travail", "Contribution", "Socle reçu", "Position"],
             [[eur(revenu), eur(revenu * b.taux), eur(ch.SOCLE_CIBLE),
@@ -1598,20 +2327,253 @@ def financement():
               else "Contributeur net"]
              for revenu in (0, 1500, 3000, 4500, 8000)],
             ["nombre", "nombre", "nombre", "texte"],
-            f"La progressivité, avec un socle de {SOCLE_ANNUEL_TEXTE} par an et "
-            f"une contribution de {pourcent(b.taux)}")
+            f"La progressivité propre au socle, à {SOCLE_ANNUEL_TEXTE} par an "
+            f"et {pourcent(b.taux)} de contribution — le barème de l'impôt sur "
+            "le revenu s'y ajoute")
         + '<p class="actions"><a class="bouton" href="simulateur.html">Voir sur '
         'votre revenu</a> <a class="bouton" href="cas-types.html">Voir les cas '
         "types</a></p>"
         + g.note(
-            "<p><strong>La progressivité du taux moyen n'est pas celle du taux "
-            "marginal.</strong> Un prélèvement proportionnel fait payer au "
-            "dernier décile la même part que le milieu, là où le barème actuel "
-            "lui en fait payer davantage. C'est un choix défendable — il est "
-            "lisible, il ne se contourne pas, il ne crée aucun effet de "
-            "seuil — mais c'en est un, et il doit être assumé comme tel plutôt "
-            "que présenté comme une équivalence technique.</p>", "vigilance")
+            "<p>Prise seule, cette mécanique a une limite qu'il faut "
+            "connaître : <strong>un prélèvement proportionnel fait payer au "
+            "dernier décile la même part que le milieu</strong>, là où un "
+            "barème à tranches lui en fait payer davantage. La progressivité "
+            "du taux moyen n'est pas celle du taux marginal.</p>"
+            "<p>C'est précisément pourquoi la contribution <strong>s'ajoute au "
+            "barème de l'impôt sur le revenu au lieu de le remplacer</strong>. "
+            "Le socle et sa contribution produisent la progressivité décrite "
+            "ici ; le barème, qu'ils laissent intact, produit la sienne. Les "
+            "deux se cumulent, et l'objection tombe. "
+            '<a href="#ajout">Voir la décision</a></p>')
         + g.source("Note de doctrine, §18 et §20.1 — Risque budgétaire.")
+    )
+
+    ajout = (
+        "<p>La note crée une contribution de solidarité proportionnelle sans "
+        "dire si elle remplace l'impôt sur le revenu ou si elle s'y ajoute. Les "
+        "deux lectures sortent du même texte et ne décrivent pas le même "
+        "programme. <strong>Le parti tranche : elle s'ajoute.</strong></p>"
+        + g.encadre('<p class="chapeau" style="margin:0">Le barème de l\'impôt '
+                    "sur le revenu reste ce qu'il est. La contribution de "
+                    "solidarité vient au-dessus, au même taux pour tous, et "
+                    "finance le socle.</p>")
+        + "<p>C'est la décision la plus lourde du programme, et elle ferme "
+        "d'un coup l'objection la plus dangereuse qui lui était faite. Un "
+        "prélèvement proportionnel qui <em>remplacerait</em> le barème ferait "
+        "du socle le plus gros allègement d'impôt jamais consenti au dernier "
+        f"décile : un haut revenu, aujourd'hui imposé à "
+        f"{pourcent(ch.IR_TAUX_SOMMET)} sur sa dernière tranche, aurait payé "
+        f"{pourcent(b.taux)}. En s'ajoutant, la contribution laisse la "
+        "progressivité du barème intacte et fait porter le financement du "
+        "socle sur tous les revenus, dans l'ordre où le barème les classe "
+        "déjà.</p>"
+        + g.points([
+            ("Le bouclage ne change pas",
+             f"Les {md(b.net)} de coût net et les {pourcent(b.taux)} de "
+             "contribution étaient calculés sans compter l'impôt sur le revenu "
+             "parmi les recettes. Ce choix les confirme : il ne déplace aucune "
+             "ligne du tableau."),
+            ("Le premier décile est protégé",
+             "C'était l'autre moitié de l'arbitrage. Un socle financé par un "
+             "prélèvement qui remplace le barème se paie pour partie sur les "
+             "prestations des plus modestes. Ici, non."),
+            ("La progressivité n'est plus une équivalence technique",
+             "Le site n'a plus à soutenir qu'un taux unique produit la même "
+             "progressivité qu'un barème. Le barème reste, et la contribution "
+             "s'y ajoute : la question ne se pose plus."),
+        ])
+        + g.source("Note de doctrine, §18 — la contribution y est « clairement "
+                   "identifiée, distincte des cotisations contributives » ; "
+                   "l'arbitrage entre remplacement et addition est une "
+                   "décision du parti.")
+    )
+
+    marginal = (
+        "<p>Une addition se paie au sommet du barème, et le chiffre doit être "
+        "posé avant qu'un contradicteur ne le pose. Voici les prélèvements qui "
+        "se cumulent sur la dernière tranche des revenus d'activité.</p>"
+        + g.tableau(
+            ["Situation", "Taux marginal au sommet", "Jugement"],
+            [["Aujourd'hui",
+              pourcent_precis(ch.taux_marginal_sommet()), "—"],
+             ["Avec la contribution, <strong>non déductible</strong>",
+              pourcent_precis(ch.taux_marginal_sommet(ch.taux_publie(),
+                                                      deductible=False)),
+              '<span class="badge">au-dessus du seuil</span>'],
+             ["Avec la contribution, <strong>déductible</strong>",
+              pourcent_precis(ch.taux_marginal_sommet(ch.taux_publie(),
+                                                      deductible=True)),
+              '<span class="badge proposition">sous le seuil</span>'],
+             ["<em>Seuil au-delà duquel un prélèvement risque la censure</em>",
+              f"<em>{pourcent_precis(ch.SEUIL_CONFISCATOIRE)}</em>", "—"]],
+            ["texte long", "nombre", "texte"],
+            "Le taux marginal au sommet du barème, revenus d'activité")
+        + "<p>Le Conseil constitutionnel a censuré, dans sa décision "
+        "2012-662 DC, des taux marginaux de 75 % qu'il a jugés confiscatoires "
+        "au regard de l'égalité devant les charges publiques. Le Conseil d'État "
+        "en a tiré une règle simple : <strong>deux tiers, quelle que soit la "
+        "source du revenu</strong>, est le seuil au-delà duquel une mesure "
+        "fiscale risque la censure.</p>"
+        + g.note(
+            "<p><strong>D'où une condition, et elle n'est pas négociable : la "
+            "contribution de solidarité doit être déductible de l'assiette de "
+            "l'impôt sur le revenu</strong>, comme l'est déjà la part "
+            "déductible de la CSG. Sans cette déductibilité, le taux marginal "
+            f"atteint {pourcent_precis(ch.taux_marginal_sommet(ch.taux_publie(), deductible=False))} "
+            "et passe au-dessus de la ligne ; avec elle, il s'établit à "
+            f"{pourcent_precis(ch.taux_marginal_sommet(ch.taux_publie()))} et "
+            "reste en dessous. Une ligne de texte sépare une réforme "
+            "constitutionnelle d'une réforme censurée.</p>", "vigilance")
+        + "<p>Ce résultat n'est pas seulement rassurant : il est "
+        "<strong>contraignant pour tout le reste du programme</strong>, et "
+        "c'est la conséquence la moins visible des deux décisions prises. "
+        "Puisque le barème de l'impôt ne bouge pas et que la contribution "
+        "finance deux étages, le taux ne peut plus monter très haut avant que "
+        "le prélèvement marginal ne franchisse la ligne. On peut calculer "
+        "exactement où elle est.</p>"
+        + g.engagements([
+            (pourcent_precis(ch.taux_maximal_constitutionnel()),
+             "Le taux maximal",
+             "Au-delà, le prélèvement marginal au sommet du barème dépasse les "
+             f"deux tiers. Nous sommes à {pourcent(b.taux)}."),
+            (eur(ch.SOCLE_PLAFOND),
+             "Le socle maximal qu'il finance",
+             f"Contre {eur(ch.SOCLE_CIBLE)} de cible. C'est peu de marge, et "
+             "c'est toute celle dont le programme dispose."),
+        ])
+        + g.note(
+            "<p>Il faut en tirer la conséquence tout de suite, parce qu'elle "
+            "ferme une option que ce site présentait encore comme ouverte. Le "
+            f"socle de {eur(ch.SOCLE_NEUTRALITE)} qui ne ferait aucun perdant "
+            f"supposerait une contribution de "
+            f"{pourcent(ch.boucler(ch.SOCLE_NEUTRALITE).taux)} : il est "
+            "<strong>hors d'atteinte</strong> tant que le barème de l'impôt sur "
+            "le revenu reste ce qu'il est. Protéger davantage le bas du barème "
+            "suppose désormais d'en réformer le haut, ce qui est un autre "
+            "chapitre du programme. "
+            '<a href="cas-types.html">Voir qui perd, et de combien</a></p>',
+            "vigilance")
+        + "<p>Deux points demandent encore un calibrage, et il vaut mieux les "
+        "nommer : les revenus du capital soumis au barème sur option, dont le "
+        "cumul dépasse le seuil même avec la déductibilité, et la contribution "
+        "exceptionnelle sur les hauts revenus, dont l'articulation avec la "
+        "contribution de solidarité doit être écrite.</p>"
+        + g.droit("Décision n° 2012-662 DC du 29 décembre 2012 ; synthèse du "
+                  "Conseil d'État sur le seuil des deux tiers.")
+        + g.repere("Taux marginal calculé au sommet du barème sur les revenus "
+                   "d'activité, CSG et CRDS comprises, contribution "
+                   "exceptionnelle sur les hauts revenus comprise. Ordre de "
+                   "grandeur : l'abattement de 10 % est plafonné et le calcul "
+                   "exact dépend du foyer.")
+    )
+
+    retraites = (
+        "<p>La seconde conséquence de ce choix portait sur dix-sept millions de "
+        "personnes, et elle appelait une décision. <strong>Elle est prise : le "
+        "socle senior est servi à tous.</strong></p>"
+        + g.encadre('<p class="chapeau" style="margin:0">Le troisième étage '
+                    "n'est pas un minimum vieillesse rebaptisé. C'est le même "
+                    "socle, versé aux mêmes conditions, à chaque personne âgée "
+                    "qui réside en France.</p>")
+        + "<p>Sans cette décision, la réforme devenait intenable : l'assiette de "
+        "la contribution comprend les pensions, comme celle de la CSG. Un "
+        "troisième étage différentiel aurait fait payer "
+        f"{pourcent(b.taux)} de sa pension à chaque retraité en ne lui donnant "
+        "rien.</p>"
+        + g.engagements([
+            (md(ch.cout_senior()), "Ce que coûte le troisième étage",
+             "En coût net, une fois l'ASPA absorbée. C'est le prix de la "
+             "cohérence avec l'architecture à trois étages de la note."),
+            (eur(b.bascule_mensuelle), "La pension de bascule",
+             "En dessous, un retraité reçoit plus qu'il ne verse. La pension "
+             f"médiane est de {eur(ch.PENSION_MEDIANE)} : la très grande "
+             "majorité des retraités y gagne."),
+        ])
+        + "<p>La note pose que <strong>aucune pension n'augmente du fait de la "
+        "réforme</strong> (§15), et cela reste vrai : ce n'est pas la pension "
+        "qui change, c'est le socle qui s'y ajoute. Les deux affirmations "
+        "tiennent ensemble, et il faut les dire ensemble.</p>"
+        + "<p>Le corollaire est écrit lui aussi. Servir le socle à tous ne "
+        "met pas à l'abri les bénéficiaires du minimum vieillesse : l'ASPA "
+        f"vaut {eur(ch.ASPA_PERSONNE_SEULE)}, le socle {eur(ch.SOCLE_CIBLE)}. "
+        "Un <strong>complément vieillesse</strong> est donc versé par-dessus, "
+        "décalque exact du complément handicap du §10, et il porte les "
+        f"ressources d'une personne âgée seule à {eur(ch.ASPA_PERSONNE_SEULE)} "
+        "— le niveau d'aujourd'hui, à l'euro près.</p>"
+        + g.note(
+            f"<p>Il coûte {md(ch.cout_complement_vieillesse())}, contre "
+            f"{md(ch.ASPA_COUT)} pour l'ASPA qu'il remplace, et la raison de "
+            "cet écart mérite d'être comprise : <strong>l'ASPA est "
+            "différentielle</strong>. Ses bénéficiaires disposent déjà d'une "
+            f"pension — {eur(ch.ASPA_PERSONNE_SEULE - ch.aspa_moyenne_observee())} "
+            "en moyenne —, et le socle servi à tous les fait passer au-dessus "
+            "du plafond dans la plupart des cas. Le complément ne paie que ce "
+            "qui dépasse. "
+            '<a href="protections.html#complement-vieillesse">Voir le '
+            "dispositif</a></p>")
+        + g.source("Note de doctrine, §3 — l'architecture à trois étages ; "
+                   "§15 — aucune hausse générale des pensions ; §10 — le "
+                   "complément handicap, dont le complément vieillesse serait "
+                   "le décalque. La décision de servir le socle senior à tous "
+                   "est une décision du parti.")
+    )
+
+    enveloppe = (
+        "<p>Les deux questions qui restaient ouvertes — le niveau du socle et "
+        "le forfait enfant — <strong>n'en font plus qu'une</strong>. Tant que "
+        "le plafond n'était pas calculé, chacune était ouverte vers le haut. "
+        "Les deux décisions prises les ont refermées sur une même enveloppe : "
+        "ce qui sépare la calibration retenue du taux maximal.</p>"
+        + g.engagements([
+            (md(ch.marge_disponible()), "L'enveloppe qui reste",
+             f"Entre les {pourcent_precis(ch.boucler().taux)} de la "
+             f"calibration retenue et les "
+             f"{pourcent_precis(ch.taux_maximal_constitutionnel())} que le "
+             "seuil des deux tiers autorise."),
+            ("1", "Le nombre de fois où elle s'achète",
+             "Mise sur le socle, elle ne l'est pas sur le forfait enfant. "
+             "C'est ce qui rend l'arbitrage tranchable."),
+        ])
+        + "<p>Voici ce qu'elle achète, et l'écart entre les deux colonnes est "
+        "le résultat le plus utile de tout ce chiffrage.</p>"
+        + g.tableau(
+            ["Usage de l'enveloppe", "Socle", "Forfait enfant",
+             "Le célibataire sans emploi", "La famille monoparentale"],
+            [[usage.libelle, eur(usage.socle), eur(usage.forfait),
+              f"{eur(ch.ecart_apres_usage(usage, INDICE_CELIBATAIRE))}",
+              f"<strong>{eur(ch.ecart_apres_usage(usage, INDICE_MONOPARENTALE))}"
+              "</strong>"]
+             for usage in ch.usages_de_la_marge()],
+            ["texte long", "nombre", "nombre", "nombre", "nombre"],
+            "Ce que l'enveloppe achète, selon où on la met")
+        + g.note(
+            "<p><strong>Le forfait enfant est environ quatre fois plus "
+            "efficace que le socle, à euro dépensé.</strong> La raison est "
+            "arithmétique et sans appel : le socle se répartit sur "
+            "cinquante-cinq millions de personnes, le forfait sur "
+            "treize millions huit cent mille enfants. Mettre toute l'enveloppe "
+            "sur le forfait fait passer la famille monoparentale de "
+            f"{eur(ch.cas_types()[INDICE_MONOPARENTALE].ecart)} à "
+            f"{eur(ch.ecart_apres_usage(ch.usages_de_la_marge()[1], INDICE_MONOPARENTALE))} "
+            "par mois — c'est-à-dire refermer presque entièrement ce que la "
+            "note désigne elle-même comme son risque social principal "
+            "(§20.2).</p>")
+        + "<p>Il faut dire aussi ce que l'enveloppe <strong>n'achète pas</strong>. "
+        "Le célibataire sans emploi reste perdant dans les trois colonnes : "
+        f"le rendre neutre demanderait un socle de {eur(ch.SOCLE_NEUTRALITE)}, "
+        "très au-delà du plafond. Ce cas type ne se referme pas par le "
+        "calibrage — il se referme en réformant le barème de l'impôt, ce qui "
+        "est un autre chapitre, ou il s'assume.</p>"
+        + g.note(
+            "<p><strong>Cet arbitrage n'est pas tranché ici.</strong> Le "
+            "chiffrage le rend décidable ; la décision appartient au parti, "
+            "comme les deux précédentes. Ce qui est acquis, c'est qu'il n'y a "
+            "plus de troisième voie : l'enveloppe est bornée, elle s'achète "
+            "une fois, et son emploi le plus efficace est connu.</p>",
+            "vigilance")
+        + g.repere("Enveloppe calculée comme l'écart entre le taux retenu et "
+                   "le taux maximal, appliqué à l'assiette large. Les écarts "
+                   "par cas type sont recalculés pour chaque calibration.")
     )
 
     return page(
@@ -1629,10 +2591,14 @@ def financement():
         [("net", "Du coût brut au coût net", net),
          ("taux", "Le taux, et le point de bascule", taux),
          ("arbitrage", "Ce que coûte chaque niveau de socle", arbitrage),
-         ("trous", "Les trois montants qui manquent", trous),
+         ("trous", "Le montant qui manque encore", trous),
          ("exclus", "Ce que ce bouclage refuse de compter", exclus),
          ("contribution", "La contribution de solidarité", contribution),
-         ("progressivite", "Une progressivité sans barème", progressivite)],
+         ("ajout", "La contribution s'ajoute à l'impôt", ajout),
+         ("marginal", "Ce que ça fait au sommet du barème", marginal),
+         ("retraites", "Ce que ça fait aux retraités", retraites),
+         ("enveloppe", "L'enveloppe qui reste, et ce qu'elle achète", enveloppe),
+         ("progressivite", "D'où vient la progressivité", progressivite)],
         tete=reperes)
 
 
@@ -1725,6 +2691,18 @@ def calendrier():
                  "situations exceptionnelles prévues explicitement : il ne doit pas "
                  "devenir une nouvelle prestation permanente.</p>", "vigilance")
         + g.source("Note de doctrine, §19 — Mise en œuvre.")
+        + g.note(
+            "<p>Une ligne de l'année 1 demande à être lue correctement : la "
+            "« préparation du registre de résidence effective » <strong>n'est "
+            "pas la création d'un fichier national</strong>. L'identité, "
+            "l'unicité, la résidence, le séjour et le décès ont déjà chacun "
+            "leur référentiel, et ils fonctionnent. Ce que cette étape prépare, "
+            "c'est l'autorisation d'y recourir — un décret en Conseil d'État "
+            "après avis de la CNIL —, pas un répertoire de plus. "
+            '<a href="nouveaux-residents.html#repertoires">Voir les outils qui '
+            "existent</a></p>", "vigilance")
+        + g.droit("Le calendrier est celui de la note (§19) ; la lecture de "
+                  "cette étape est propre à ce site.")
     )
 
     risques = (
@@ -1811,12 +2789,103 @@ def questions():
               g.source("Note de doctrine, §14 et §15."), identifiant="q-assurance"),
         g.cle("Tout le monde y a droit dès son arrivée en France ?",
               "Non. Le socle est attaché à la résidence effective, et l'accès complet "
-              "d'un ressortissant étranger est acquis après dix ans de résidence "
-              "régulière, la contribution de solidarité montant au même rythme. La "
-              "naturalisation ouvre le régime commun. Les protections fondamentales — "
-              "asile, soins urgents, protection de l'enfance, hébergement d'urgence — "
-              "restent hors de ce barème.",
-              g.source("Note de doctrine, §16."), identifiant="q-etrangers"),
+              "d'un ressortissant étranger se construit par une convergence où le droit "
+              "et la contribution montent du même pas. La naturalisation ouvre le régime "
+              "commun. Les protections fondamentales — asile, soins urgents, protection "
+              "de l'enfance, hébergement d'urgence — restent hors de ce barème.",
+              "<p>La note fixe cette convergence à dix ans. Le droit européen et "
+              "international en réduit le périmètre réel : les réfugiés, les "
+              "travailleurs de l'Union et les résidents de longue durée relèvent "
+              "de l'égalité de traitement, et le site l'écrit plutôt que de le "
+              "laisser découvrir. "
+              '<a href="nouveaux-residents.html#exceptions">Voir les sept publics '
+              "concernés et ce qui reste du barème</a></p>",
+              g.source("Note de doctrine, §16 ; le périmètre de droit est propre "
+                       "à ce site."),
+              identifiant="q-etrangers"),
+        g.cle("Qu'est-ce qui reste à décider ?",
+              "Une seule chose : où mettre ce qu'il reste. Le financement du socle "
+              "laisse une enveloppe bornée par le plafond constitutionnel, et elle "
+              "s'achète une fois — sur le socle, ou sur le forfait enfant, pas sur les "
+              "deux. À euro dépensé, le forfait enfant réduit environ quatre fois plus "
+              "les pertes, parce qu'il se concentre sur les enfants là où le socle se "
+              "répartit sur tous les adultes.",
+              "<p>Mis entièrement sur le forfait enfant, il ferait passer la "
+              "famille monoparentale de "
+              f"{eur(ch.cas_types()[INDICE_MONOPARENTALE].ecart)} à "
+              f"{eur(ch.ecart_apres_usage(ch.usages_de_la_marge()[1], INDICE_MONOPARENTALE))} "
+              "par mois : c'est refermer presque entièrement le risque social "
+              "que la note désigne elle-même comme principal. "
+              '<a href="financement.html#enveloppe">Voir l\'enveloppe et ses '
+              "trois usages</a></p>",
+              g.repere("Enveloppe calculée entre le taux retenu et le taux "
+                       "maximal compatible avec le seuil des deux tiers."),
+              identifiant="q-enveloppe"),
+        g.cle("La contribution remplace-t-elle l'impôt sur le revenu ?",
+              "Non, elle s'y ajoute. Le barème de l'impôt sur le revenu reste ce qu'il "
+              "est, et la contribution de solidarité vient au-dessus, au même taux pour "
+              "tous. C'est ce qui empêche la réforme de devenir un allègement d'impôt "
+              "pour les plus hauts revenus, et ce qui protège le premier décile.",
+              "<p>Cela a un prix, et il est écrit : au sommet du barème, les "
+              "prélèvements cumulés atteignent "
+              f"{pourcent_precis(ch.taux_marginal_sommet(ch.taux_publie()))}, "
+              "contre "
+              f"{pourcent_precis(ch.taux_marginal_sommet())} aujourd'hui. Cela "
+              "ne tient que si la contribution est déductible de l'assiette de "
+              "l'impôt, comme l'est déjà une partie de la CSG — sans quoi le "
+              "total dépasse le seuil des deux tiers au-delà duquel le juge "
+              "constitutionnel censure. "
+              '<a href="financement.html#marginal">Voir le calcul</a></p>',
+              g.source("Note de doctrine, §18 ; l'arbitrage est une décision "
+                       "du parti."),
+              identifiant="q-ir"),
+        g.cle("Et outre-mer ?",
+              "Le socle s'y applique de plein droit, au même montant. À Mayotte, où le "
+              "RSA vaut aujourd'hui la moitié du barème métropolitain, c'est le gain le "
+              "plus important de toute la réforme. En Nouvelle-Calédonie et en "
+              "Polynésie française, en revanche, la protection sociale est une "
+              "compétence de la collectivité : le socle ne peut pas y être institué "
+              "depuis Paris.",
+              "<p>Le montant est le même partout, et ce choix s'assume : le "
+              "moduler sur les prix locaux obligerait à le faire aussi entre "
+              "Paris et la Creuse, et cette pente n'a pas de fin. Mais les prix "
+              "sont réellement plus élevés outre-mer, et c'est la politique des "
+              "prix qui doit y répondre, pas la prestation. "
+              '<a href="revenu-universel.html#outremer">Voir le détail</a></p>',
+              g.repere("Barèmes et taux de pauvreté par territoire, Insee et "
+                       "Drees ; la note, elle, ne mentionne pas l'outre-mer."),
+              identifiant="q-outremer"),
+        g.cle("Qu'est-ce qui empêche le socle de fondre avec le temps ?",
+              "Rien, tant que sa règle d'indexation n'est pas écrite — et la note ne "
+              "l'écrit pas. Indexé sur les seuls prix, comme le sont les minima sociaux "
+              "aujourd'hui, le socle garde son pouvoir d'achat mais décroche du niveau "
+              "de vie : il passe de 41 % à 35 % du seuil de pauvreté en vingt ans, sans "
+              "que personne n'ait voté cette baisse.",
+              "<p>C'est ce qui est arrivé au point d'indice de la fonction "
+              "publique, qui n'a jamais eu de règle. La parade tient en une "
+              "ligne : inscrire l'indexation dans le texte qui crée le socle, "
+              "et lui adjoindre un plancher exprimé en part du seuil de "
+              "pauvreté. "
+              '<a href="revenu-universel.html#indexation">Voir les trois règles '
+              "possibles</a></p>",
+              g.repere("Projection en euros constants, sur la croissance "
+                       "observée du niveau de vie médian."),
+              identifiant="q-indexation"),
+        g.cle("Est-ce que ça crée un fichier de toute la population ?",
+              "Non, et ce serait contraire à ce que la réforme cherche. Le socle "
+              "s'appuie sur les répertoires qui existent déjà — celui de l'Insee pour "
+              "l'état civil, celui de la Cnav pour l'identité, le répertoire commun de "
+              "la protection sociale pour les doublons — et sur la condition de "
+              "résidence que le code de la sécurité sociale écrit depuis longtemps.",
+              "<p>Le point important est ailleurs : <strong>un socle universel a "
+              "besoin de moins de données qu'une prestation sous condition de "
+              "ressources.</strong> L'administration cesse de demander ce que "
+              "vous gagnez, ce que vous payez de loyer, avec qui vous vivez et "
+              "ce que gagne votre conjoint. Elle vérifie que vous existez et que "
+              "vous vivez ici. C'est moins de contrôle, pas plus. "
+              '<a href="nouveaux-residents.html#moins">Voir le détail</a></p>',
+              g.source("Note de doctrine, §11 et §17."),
+              identifiant="q-fichier"),
         g.cle("Un Français installé à l'étranger le touche-t-il ?",
               "Non : la nationalité seule ne suffit pas. Le socle est attaché à la "
               "résidence effective en France, et c'est l'un des critères que le contrôle "
@@ -1837,12 +2906,12 @@ def questions():
         g.cle("Qui y perd ?",
               "Trois situations, et le site les chiffre plutôt que de les laisser "
               "découvrir : le célibataire sans emploi aujourd'hui au RSA et à l'aide "
-              "au logement, la famille monoparentale modeste, et le retraité au "
-              "minimum vieillesse si le socle senior n'est pas calibré à son niveau. "
-              "Les deux dernières se ferment par une décision ; la première est "
-              "l'arbitrage central du programme.",
+              "au logement, la famille monoparentale modeste, et le salarié au SMIC, "
+              "dont la perte vient du taux de contribution qu'appelle le financement "
+              "des deux étages. Les bénéficiaires du minimum vieillesse et de l'AAH, "
+              "eux, sont protégés par un complément.",
               '<p class="actions"><a class="bouton" href="cas-types.html">Voir les '
-              "sept situations</a></p>",
+              f"{en_lettres(len(ch.cas_types()))} situations</a></p>",
               g.repere("Sept cas types calculés aux barèmes 2026, perdants compris."),
               identifiant="q-perdants-chiffres"),
     ])

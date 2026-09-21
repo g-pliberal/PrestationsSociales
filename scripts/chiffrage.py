@@ -68,6 +68,11 @@ APL_ETUDIANT = 180.0             # € / mois, étudiant décohabitant
 
 SEUIL_PAUVRETE = 1337.0          # € / mois, personne seule (INSEE, 2024)
 
+#: La pension nette médiane, tous régimes : la moitié des retraités perçoit
+#: moins. C'est le cas type que la décision sur le troisième étage crée, et il
+#: doit figurer à côté de celui du minimum vieillesse, qui perd encore.
+PENSION_MEDIANE = 1560.0
+
 #: Allocations familiales : le montant de base couvre deux enfants, chaque
 #: enfant suivant ajoute environ ce montant-ci.
 ALLOCATIONS_FAMILIALES_PAR_ENFANT_SUP = 196.0
@@ -239,9 +244,29 @@ class Bouclage:
     socle_annuel: float
 
 
-def boucler(socle_mensuel: float = SOCLE_CIBLE,
-            personnes: int = POPULATION_18_64,
-            absorbe_milliards: float | None = None) -> Bouclage:
+def boucler(socle_mensuel: float = SOCLE_CIBLE) -> Bouclage:
+    """LE BOUCLAGE PUBLIÉ : les deux étages, adulte et senior.
+
+    C'est le défaut, et c'est délibéré. Ce module a d'abord porté un bouclage
+    à un seul étage ; quand le second est arrivé, six appels sur sept ont
+    continué de renvoyer l'ancien chiffre sans que rien ne le signale. Le
+    défaut d'une fonction est ce qu'on obtient quand on ne réfléchit pas — il
+    doit donc être la réponse juste. `boucler_etage()` reste disponible pour
+    le tableau qui décompose les deux étages, et il faut l'appeler exprès.
+    """
+    return boucler_etage(
+        socle_mensuel,
+        personnes=POPULATION_18_64 + POPULATION_65_PLUS,
+        # L'ASPA est absorbée, mais le complément vieillesse en sert une part :
+        # il se retranche donc de l'économie, et non du coût brut.
+        absorbe_milliards=(sum(poste.milliards for poste in ABSORBEES)
+                           + ASPA_COUT
+                           - cout_complement_vieillesse(socle_mensuel)))
+
+
+def boucler_etage(socle_mensuel: float = SOCLE_CIBLE,
+                  personnes: int = POPULATION_18_64,
+                  absorbe_milliards: float | None = None) -> Bouclage:
     """Le bouclage complet, du coût brut au point de bascule.
 
     Le POINT DE BASCULE est le revenu à partir duquel la contribution dépasse le
@@ -270,67 +295,98 @@ SOCLE_NEUTRALITE = round(rsa_foyer(1) + APL_SANS_RESSOURCES)
 def taux_publie(socle_mensuel: float = SOCLE_CIBLE) -> float:
     """Le taux tel que le site l'ÉCRIT : arrondi au point de pourcentage.
 
-    Le site publie « 13 % » ; s'en servir ailleurs à 13,31 % ferait répondre le
-    calculateur et les cas-types à quelques euros près sur les mêmes
-    situations. Un écart pareil ne se remarque que quand quelqu'un le cherche,
-    et quelqu'un le cherchera.
+    Le site publie un taux rond ; s'en servir ailleurs à la décimale ferait
+    répondre le calculateur et les cas-types à quelques euros près sur les
+    mêmes situations. Un écart pareil ne se remarque que quand quelqu'un le
+    cherche, et quelqu'un le cherchera.
     """
     return round(boucler(socle_mensuel).taux, 2)
 
 
 def calibrations() -> list[Bouclage]:
-    """Les quatre calibrations que le site met côte à côte.
+    """Les calibrations que le site met côte à côte, réforme complète.
 
-    De la première marche de la note au socle qui ne fait aucun perdant : c'est
-    l'échelle complète de l'arbitrage, et elle montre ce qu'il coûte.
+    De la première marche de la note au socle qui ne fait aucun perdant, en
+    passant par le plafond que la Constitution impose : c'est l'échelle
+    complète de l'arbitrage, et elle montre ce qu'il coûte.
     """
-    niveaux = [SOCLE_MARCHE, SOCLE_CIBLE, 600, SOCLE_NEUTRALITE]
+    niveaux = [SOCLE_MARCHE, SOCLE_CIBLE, SOCLE_PLAFOND, SOCLE_NEUTRALITE]
     return [boucler(niveau) for niveau in sorted(set(niveaux))]
 
 
-# -- 4. le troisième étage, que la note ne chiffre pas -----------------------
+# -- 4. le troisième étage : servi à tous ------------------------------------
+#
+# SECONDE DÉCISION DU PARTI. La note pose trois étages (§3) et n'en chiffre
+# qu'un. Le socle senior pouvait se lire de deux façons : différentiel, au
+# niveau de l'ASPA — auquel cas l'architecture n'a plus que deux étages —, ou
+# servi à tous, comme le socle adulte.
+#
+# IL EST SERVI À TOUS. C'est la lecture cohérente avec le §3, et c'est la seule
+# tenable une fois admis que la contribution s'ajoute à l'impôt : l'assiette
+# comprend les pensions, et un retraité qui paie sans rien recevoir n'est pas
+# une conséquence acceptable d'une réforme qui promet un socle à chacun.
+#
+# Elle coûte quatre-vingt-treize milliards, et elle fait passer la contribution
+# de treize à dix-neuf points. C'est le prix de la cohérence, et il est écrit.
 
 ASPA_COUT = 4.3   # Md€ / an, dépense actuelle du minimum vieillesse
 
+SENIOR_SERVI_A_TOUS = True
 
-@dataclass(frozen=True)
-class EtageSenior:
-    libelle: str
-    cout_net: float
-    montant: str
-    consequence: str
+#: Les bénéficiaires actuels du minimum vieillesse. Le socle leur est versé
+#: comme aux autres, mais il est inférieur à ce qu'ils touchent : il leur faut
+#: un complément, exactement comme l'AAH devient un complément handicap (§10).
+BENEFICIAIRES_ASPA = 700_000
 
 
-def etages_seniors(socle_mensuel: float = SOCLE_CIBLE) -> list[EtageSenior]:
-    """Les deux lectures possibles du « socle senior », et leur prix.
+def cout_senior(socle_mensuel: float = SOCLE_CIBLE) -> float:
+    """Le coût net du troisième étage, en Md€ : le brut moins l'ASPA absorbée."""
+    return (cout_brut(socle_mensuel, POPULATION_65_PLUS) / MILLIARD
+            - ASPA_COUT)
 
-    La note pose trois étages (§3) et n'en chiffre qu'un. Entre les deux
-    lectures, l'écart est de quatre-vingt-treize milliards et de cinq cents
-    euros par mois pour sept cent mille personnes : ce n'est pas un détail de
-    calibrage, c'est un choix politique qui doit être écrit.
+
+#: Le complément vieillesse porte les ressources au niveau de l'ASPA. Il est
+#: DIFFÉRENTIEL, comme elle, et c'est ce qui le rend abordable : le socle étant
+#: servi à tous, il ne reste à payer que ce qui dépasse.
+COMPLEMENT_VIEILLESSE_PLAFOND = ASPA_PERSONNE_SEULE
+
+
+def complement_vieillesse(pension: float, socle_mensuel: float = SOCLE_CIBLE) -> float:
+    """Ce que touche, en plus du socle, un retraité dont la pension est faible."""
+    return max(0.0, COMPLEMENT_VIEILLESSE_PLAFOND - socle_mensuel - pension)
+
+
+def cout_complement_vieillesse(socle_mensuel: float = SOCLE_CIBLE) -> float:
+    """Le coût annuel du complément vieillesse, en Md€.
+
+    ATTENTION À LA MÉCANIQUE, parce qu'elle est contre-intuitive et qu'une
+    première version de ce calcul s'y est trompée d'un facteur quatre.
+
+    L'ASPA est DIFFÉRENTIELLE : elle complète les ressources jusqu'à un
+    plafond. Un bénéficiaire qui touche 512 € d'ASPA a donc déjà 532 € de
+    pension par ailleurs. Servir le socle à tous lui apporte 550 € de plus, ce
+    qui le fait passer AU-DESSUS du plafond : il n'a plus besoin de rien.
+
+    Le complément ne paie donc, par bénéficiaire, que la part de l'ASPA
+    d'aujourd'hui qui EXCÈDE le socle — et non l'écart entre le socle et le
+    plafond, qui supposerait une pension nulle pour tous.
+
+    Faute de connaître la distribution des montants d'ASPA servis, on la prend
+    uniforme entre zéro et le plafond. L'hypothèse n'est pas gratuite : une
+    telle distribution a pour moyenne la moitié du plafond, soit 521,80 €, et
+    la moyenne observée est de 512 € — deux pour cent d'écart. C'est une
+    coïncidence utile, et elle est dite plutôt que cachée.
     """
-    universel = cout_brut(socle_mensuel, POPULATION_65_PLUS) / MILLIARD - ASPA_COUT
-    return [
-        EtageSenior(
-            "Socle senior différentiel, au niveau de l'ASPA",
-            ASPA_COUT,
-            f"{ASPA_PERSONNE_SEULE:,.2f} € par mois".replace(",", " "),
-            "Aucun bénéficiaire actuel du minimum vieillesse ne perd un euro. "
-            "Mais le troisième étage n'est plus universel, et l'architecture "
-            "de la note n'en compte plus que deux."),
-        EtageSenior(
-            "Socle senior universel, au niveau du socle adulte",
-            universel,
-            f"{socle_mensuel} € par mois",
-            "L'architecture à trois étages est respectée. Mais le minimum "
-            "vieillesse passe de "
-            f"{ASPA_PERSONNE_SEULE:,.2f} € à {socle_mensuel} € "
-            "pour environ 700 000 personnes, et le coût net de la réforme "
-            f"augmente de {universel:,.0f} Md€.".replace(",", " "),
-        ),
-    ]
+    plafond = COMPLEMENT_VIEILLESSE_PLAFOND
+    if socle_mensuel >= plafond:
+        return 0.0
+    moyenne_versee = (plafond - socle_mensuel) ** 2 / (2 * plafond)
+    return moyenne_versee * 12 * BENEFICIAIRES_ASPA / MILLIARD
 
 
+def aspa_moyenne_observee() -> float:
+    """L'allocation moyenne effectivement servie, qui valide l'hypothèse."""
+    return ASPA_COUT * MILLIARD / BENEFICIAIRES_ASPA / 12
 
 
 # -- 5. le forfait enfant ----------------------------------------------------
@@ -379,9 +435,9 @@ def cout_forfait(forfait_mensuel: float) -> float:
 #
 # Convention de calcul, la même pour tous : la contribution de solidarité est
 # prise sur le revenu du travail tel qu'il est versé aujourd'hui, toutes choses
-# égales par ailleurs. Elle ne modélise pas le sort de l'impôt sur le revenu,
-# que la note ne tranche pas — et c'est précisément le point que la page du
-# financement met en avant.
+# égales par ailleurs. L'impôt sur le revenu n'y apparaît pas parce qu'il NE
+# BOUGE PAS : le parti a tranché, la contribution s'y ajoute (voir §7). Ces
+# cas-types, écrits avant l'arbitrage, en étaient déjà le calcul direct.
 
 @dataclass(frozen=True)
 class CasType:
@@ -393,6 +449,10 @@ class CasType:
     lecture: str
     reserve: str = ""
     personnes: int = 1
+    #: Vide pour la métropole. Un cas type d'outre-mer se lit contre un barème
+    #: local, et il doit le dire : sans quoi on compare deux choses qui ne sont
+    #: pas comparables.
+    territoire: str = ""
 
     @property
     def avant(self) -> float:
@@ -454,15 +514,35 @@ def cas_types(socle: float = SOCLE_CIBLE, taux: float | None = None,
             "foyer sans revenu n'est pas imposable.",
             personnes=3),
         CasType(
-            "Retraité au minimum vieillesse",
-            "À l'ASPA. Environ 700 000 personnes.",
+            "Retraité au minimum vieillesse, sans pension",
+            "À l'ASPA, et sans aucune autre ressource. Le cas le plus "
+            "défavorable de la population du minimum vieillesse.",
             [("ASPA", ASPA_PERSONNE_SEULE)],
-            [("Socle senior, au niveau du socle adulte", socle)],
-            "Ce cas-type n'existe que parce que la note ne chiffre pas le "
-            "socle senior. Écrire que le socle senior est servi au niveau de "
-            "l'ASPA le fait disparaître, pour 4,3 Md€ — le coût actuel du "
-            "minimum vieillesse.",
-            "Disparaît si le socle senior est calibré au niveau de l'ASPA."),
+            [("Socle senior", socle),
+             ("Complément vieillesse", complement_vieillesse(0, socle))],
+            "Neutre, et c'est le complément vieillesse qui le rend tel. Le "
+            "socle seul l'aurait fait perdre "
+            f"{ASPA_PERSONNE_SEULE - socle:.0f} € par mois : c'est le décalque "
+            "exact du complément handicap que la note prévoit au §10, appliqué "
+            "à la vieillesse.",
+            "La neutralité suppose un complément différentiel calibré sur le "
+            f"plafond de l'ASPA, soit {ASPA_PERSONNE_SEULE:.2f} € de ressources "
+            "garanties."),
+        CasType(
+            "Retraité à la pension médiane",
+            "La moitié des retraités perçoit moins que cette pension.",
+            [("Pension nette", PENSION_MEDIANE)],
+            [("Pension nette", PENSION_MEDIANE),
+             ("Socle senior", socle),
+             ("Contribution de solidarité", -round(PENSION_MEDIANE * taux))],
+            "C'est ce que produit la décision de servir le socle senior à "
+            "tous. L'assiette de la contribution comprend les pensions : sans "
+            "troisième étage, ce retraité paierait sans rien recevoir. Avec "
+            "lui, il gagne — et c'est le cas de la très grande majorité des "
+            "retraités, puisque la bascule ne se fait qu'au-dessus de "
+            f"{boucler(socle).bascule_mensuelle:.0f} € de pension.",
+            "Aucune pension n'augmente du fait de la réforme (§15) : c'est le "
+            "socle qui s'ajoute, pas la pension qui change."),
         CasType(
             "Personne handicapée à l'AAH",
             "Allocation aux adultes handicapés, sans autre ressource.",
@@ -504,6 +584,19 @@ def cas_types(socle: float = SOCLE_CIBLE, taux: float | None = None,
             "presque rien, parce qu'il raisonne par foyer.",
             "", personnes=4),
         CasType(
+            "À Mayotte, célibataire sans emploi",
+            "Au RSA mahorais, dont le barème est réduit de moitié.",
+            [("RSA de Mayotte", RSA_MAYOTTE)],
+            [("Socle adulte", socle)],
+            "Le gain le plus spectaculaire du programme, et il tient à une "
+            "seule chose : le socle est <strong>le même pour tous</strong>. "
+            "Un barème réduit de moitié ne survit pas à un droit universel — "
+            "c'est une conséquence de la doctrine, pas une faveur.",
+            "L'aide au logement n'est pas comptée : elle n'a pas à Mayotte la "
+            "forme qu'elle a ailleurs. Le coût de l'alignement est chiffré à "
+            "part.",
+            territoire="Mayotte"),
+        CasType(
             "Étudiant décohabitant, non boursier",
             "Logé seul, aide au logement pour toute ressource publique.",
             [("Aide au logement", APL_ETUDIANT)],
@@ -518,51 +611,129 @@ def cas_types(socle: float = SOCLE_CIBLE, taux: float | None = None,
     ]
 
 
-# -- 7. la question que la note ne tranche pas -------------------------------
+# -- 7. la contribution s'ajoute à l'impôt sur le revenu ---------------------
 #
-# C'est la conclusion du chiffrage, et elle est plus dure que le reste.
+# LE PARTI A TRANCHÉ, et c'est la décision la plus lourde du programme.
 #
-# La note ne dit nulle part si la contribution de solidarité REMPLACE l'impôt
-# sur le revenu ou s'y AJOUTE. Tant que ce n'est pas écrit, le même programme
-# se lit de deux façons opposées — et un adversaire choisira la pire.
+# La note créait une contribution de solidarité proportionnelle (§18) sans dire
+# si elle REMPLAÇAIT l'impôt sur le revenu ou si elle s'y AJOUTAIT. Les deux
+# lectures sortaient du même texte et ne décrivaient pas le même programme :
+# l'une faisait du socle le plus gros allègement jamais consenti au dernier
+# décile, l'autre préserve la progressivité du barème.
+#
+# La position retenue est la seconde : LA CONTRIBUTION S'AJOUTE. Le barème de
+# l'impôt sur le revenu reste ce qu'il est, et la contribution vient au-dessus.
+#
+# Ce choix ferme d'un coup l'attaque principale du programme. Il en ouvre deux
+# autres, qui sont calculées ici parce qu'elles ne sont pas des détails de
+# calibrage : le taux marginal au sommet du barème, et le sort des retraités.
 
-IR_RENDEMENT = 88.0   # Md€, impôt sur le revenu
+IR_RENDEMENT = 88.0   # Md€, impôt sur le revenu — inchangé par la réforme
+
+#: Les prélèvements qui se cumulent au sommet du barème, sur les revenus
+#: d'activité. ORDRES DE GRANDEUR : l'abattement de 10 % est plafonné, la
+#: contribution exceptionnelle sur les hauts revenus ne joue qu'au-delà de
+#: certains seuils, et le calcul exact dépend du foyer. La méthode est visible
+#: ci-dessous pour qu'on puisse la refaire.
+IR_TAUX_SOMMET = 0.45
+CEHR_TAUX_SOMMET = 0.04
+CSG_CRDS_ACTIVITE = 0.097
+CSG_DEDUCTIBLE = 0.068
+ASSIETTE_CSG_ACTIVITE = 0.9825
+
+#: Le seuil au-delà duquel un prélèvement risque la censure. Le Conseil d'État
+#: a synthétisé la jurisprudence du Conseil constitutionnel — décision
+#: 2012-662 DC, qui a censuré des taux marginaux de 75 % — par une règle
+#: simple : DEUX TIERS, quelle que soit la source du revenu.
+SEUIL_CONFISCATOIRE = 2 / 3
 
 
-def lectures_de_la_contribution(bouclage: Bouclage) -> list[tuple[str, str]]:
-    """Les deux lectures possibles, et ce que chacune produit."""
-    taux = bouclage.taux * 100
-    return [
-        ("La contribution remplace l'impôt sur le revenu",
-         f"Le prélèvement sur les revenus devient proportionnel, à {taux:.0f} % "
-         "environ. Un haut revenu, aujourd'hui imposé à 41 ou 45 % sur sa "
-         f"dernière tranche, paie {taux:.0f} %. La réforme devient le plus gros "
-         "allègement d'impôt jamais consenti au dernier décile, financé pour "
-         "partie par les prestations des premiers. C'est défendable, mais il "
-         "faut le savoir avant de l'être."),
-        ("La contribution s'ajoute à l'impôt sur le revenu",
-         f"Les {taux:.0f} points viennent au-dessus du barème actuel et de la "
-         "CSG. La progressivité est préservée, le premier décile est mieux "
-         "protégé, et le taux marginal du haut du barème devient "
-         "difficilement soutenable. C'est l'autre moitié de l'arbitrage."),
-    ]
+def taux_marginal_sommet(contribution: float | None = None,
+                         deductible: bool = True) -> float:
+    """Le taux marginal au sommet du barème, revenus d'activité.
+
+    `deductible` dit si la contribution de solidarité s'impute sur l'assiette
+    de l'impôt sur le revenu, comme le fait déjà la CSG pour sa part
+    déductible. Ce n'est pas un détail technique : c'est ce qui fait passer le
+    total au-dessus ou au-dessous du seuil des deux tiers.
+    """
+    if contribution is None:
+        contribution = 0.0
+    csg = CSG_CRDS_ACTIVITE * ASSIETTE_CSG_ACTIVITE
+    assiette_ir = 1 - CSG_DEDUCTIBLE * ASSIETTE_CSG_ACTIVITE
+    if deductible:
+        assiette_ir -= contribution
+    return (csg + contribution + IR_TAUX_SOMMET * assiette_ir
+            + CEHR_TAUX_SOMMET)
 
 
-#: La contrainte de fond, qui ne dépend d'aucune hypothèse : un prélèvement
-#: strictement proportionnel ne peut pas concentrer l'effort sur le haut. Le
-#: socle qui protège le bas coûte donc un taux qui frappe le milieu, sauf à
-#: conserver un élément progressif quelque part.
+def taux_maximal_constitutionnel() -> float:
+    """Le taux de contribution au-delà duquel le seuil des deux tiers est franchi.
+
+    On résout l'inégalité du taux marginal pour la contribution, à barème de
+    l'impôt sur le revenu inchangé et contribution déductible :
+
+        CSG + t + IR × (assiette − t) + CEHR ≤ 2/3
+
+    Ce n'est pas une curiosité arithmétique. C'est la contrainte que les deux
+    décisions du parti — la contribution s'ajoute à l'impôt, le socle senior
+    est servi à tous — imposent désormais à TOUT le reste du programme.
+    """
+    csg = CSG_CRDS_ACTIVITE * ASSIETTE_CSG_ACTIVITE
+    assiette_ir = 1 - CSG_DEDUCTIBLE * ASSIETTE_CSG_ACTIVITE
+    return ((SEUIL_CONFISCATOIRE - csg - IR_TAUX_SOMMET * assiette_ir
+             - CEHR_TAUX_SOMMET) / (1 - IR_TAUX_SOMMET))
+
+
+def socle_pour_taux(taux: float) -> float:
+    """Le socle mensuel que finance un taux donné, réforme complète."""
+    net = taux * ASSIETTE_LARGE
+    absorbe = sum(poste.milliards for poste in ABSORBEES) + ASPA_COUT
+    brut = (net + absorbe) * MILLIARD
+    return brut / ((POPULATION_18_64 + POPULATION_65_PLUS) * 12)
+
+
+#: LE PLAFOND. Le socle le plus élevé que les deux décisions laissent possible
+#: sans franchir le seuil des deux tiers. Il n'est pas choisi : il tombe du
+#: calcul, et il ferme une option que le site présentait encore comme ouverte —
+#: celle d'un socle assez haut pour ne faire aucun perdant.
+SOCLE_PLAFOND = round(socle_pour_taux(taux_maximal_constitutionnel()))
+
+
+#: La part de l'assiette large qui est constituée de pensions de retraite.
+#: C'est elle qui décide du sort des retraités sous ce choix, et le chiffre est
+#: un ordre de grandeur assumé.
+PART_PENSIONS = 0.20
+
+
+def taux_hors_pensions(socle_mensuel: float = SOCLE_CIBLE) -> float:
+    """Le taux qu'il faudrait si les pensions étaient exonérées.
+
+    Exonérer les pensions rétrécit l'assiette d'un cinquième ; le même montant
+    à financer sur une assiette plus petite se paie par un taux plus élevé, et
+    ce sont les actifs qui le paient.
+    """
+    return boucler(socle_mensuel).net / (ASSIETTE_LARGE * (1 - PART_PENSIONS))
+
+
+
+#: La contrainte de fond. Elle a changé de nature avec les deux décisions du
+#: parti : ce n'était qu'un arbitrage politique entre un socle bas et une
+#: contribution basse ; c'est désormais un PLAFOND, et il se calcule.
 def contrainte_structurelle() -> str:
-    protege = boucler(SOCLE_NEUTRALITE)
-    partiel = boucler(SOCLE_CIBLE)
+    retenu = boucler(SOCLE_CIBLE)
+    plafond = boucler(SOCLE_PLAFOND)
+    perte = abs(cas_types()[0].ecart)
     return (
         f"Un socle de {SOCLE_CIBLE} € laisse le célibataire sans emploi perdre "
-        f"{abs(cas_types()[0].ecart):.0f} € par mois. Le socle qui ne fait "
-        f"aucun perdant est de {SOCLE_NEUTRALITE} €, et il porte la "
-        f"contribution de {partiel.taux * 100:.0f} % à "
-        f"{protege.taux * 100:.0f} %. Entre les deux, il n'y a pas de "
-        "calibrage habile : il y a un arbitrage politique, et un prélèvement "
-        "proportionnel ne permet pas de le contourner.")
+        f"{perte:.0f} € par mois, et le socle qui ne ferait aucun perdant est "
+        f"de {SOCLE_NEUTRALITE} €. Mais cette option est fermée : à "
+        f"{SOCLE_NEUTRALITE} €, la contribution dépasse de loin le taux qui "
+        "fait franchir au prélèvement marginal le seuil des deux tiers. Le "
+        f"plafond réel est de {SOCLE_PLAFOND} € par mois, pour une contribution "
+        f"de {plafond.taux * 100:.0f} % — contre {retenu.taux * 100:.0f} % à la "
+        f"cible de {SOCLE_CIBLE} €. Entre les deux, la marge est mince, et elle "
+        "est tout ce dont le programme dispose.")
 
 
 # -- 8. les barèmes servis au calculateur ------------------------------------
@@ -597,3 +768,260 @@ def baremes_du_calculateur() -> dict:
         "aplExtinction": APL_EXTINCTION_SMIC,
         "seuilPauvrete": SEUIL_PAUVRETE,
     }
+
+
+# -- 9. l'outre-mer ----------------------------------------------------------
+#
+# LA NOTE N'EN PARLE PAS. Vingt-deux sections, aucune mention des départements
+# et régions d'outre-mer ni des collectivités. C'est le silence le plus coûteux
+# du document : trois personnes sur dix y sont couvertes par les minima
+# sociaux, contre une sur dix en métropole, et un programme social muet sur ces
+# territoires sera lu comme un programme écrit contre eux.
+#
+# Il y a là deux questions distinctes, et les confondre serait une faute :
+#   - dans les DROM, le socle s'applique de plein droit, mais il y rencontre un
+#     niveau de pauvreté et un niveau de prix qui ne sont pas ceux de la
+#     métropole — et, à Mayotte, un barème du RSA réduit de moitié ;
+#   - dans plusieurs collectivités, la protection sociale est une compétence
+#     LOCALE, et le socle ne peut pas s'y appliquer par décision de Paris.
+
+RSA_MAYOTTE = 325.85   # € / mois, personne seule, 2026 — la moitié du barème
+
+
+@dataclass(frozen=True)
+class Territoire:
+    nom: str
+    population: int
+    pauvrete: float        # part sous le seuil de pauvreté national
+    ecart_prix: float      # niveau général des prix, écart avec la métropole
+    rsa: float             # montant forfaitaire applicable, personne seule
+    note: str = ""
+
+    @property
+    def aligne(self) -> bool:
+        """Le barème du RSA y est-il celui de la métropole."""
+        return abs(self.rsa - RSA_PERSONNE_SEULE) < 1
+
+
+#: Les cinq départements et régions d'outre-mer. Le socle s'y applique de plein
+#: droit : ils sont déjà dans l'hypothèse de population de la note (§4).
+DROM = [
+    Territoire("La Réunion", 885_174, 0.361, 0.07, RSA_PERSONNE_SEULE),
+    Territoire("Guadeloupe", 388_000, 0.345, 0.12, RSA_PERSONNE_SEULE),
+    Territoire("Martinique", 347_686, 0.268, 0.12, RSA_PERSONNE_SEULE),
+    Territoire("Guyane", 312_055, 0.53, 0.12, RSA_PERSONNE_SEULE),
+    Territoire("Mayotte", 320_000, 0.773, 0.07, RSA_MAYOTTE,
+               "Recensement en cours ; le barème du RSA y est réduit de moitié."),
+]
+
+#: Les collectivités où la protection sociale relève de la collectivité
+#: elle-même. Ce n'est pas une nuance administrative : c'est une limite de
+#: compétence, et le programme ne peut pas la franchir seul.
+COLLECTIVITES_AUTONOMES = [
+    ("Nouvelle-Calédonie", 268_000,
+     "Loi organique n° 99-209 du 19 mars 1999",
+     "La protection sociale est une compétence de la Nouvelle-Calédonie, qui a "
+     "son propre système."),
+    ("Polynésie française", 280_000,
+     "Loi organique n° 2004-192 du 27 février 2004",
+     "La Polynésie française est compétente et autonome en matière de "
+     "protection sociale."),
+]
+
+#: Le panier alimentaire métropolitain coûte de 37 % à 48 % de plus dans les
+#: DROM. C'est ce chiffre-là, et non l'écart du niveau général, qui décide de
+#: ce qu'un socle de 550 € permet d'acheter.
+ECART_PRIX_ALIMENTAIRE = (0.37, 0.48)
+
+#: Part de la population couverte par les minima sociaux, conjoints et enfants
+#: compris (DREES).
+COUVERTURE_MINIMA_DROM = 0.30
+COUVERTURE_MINIMA_METROPOLE = 0.10
+
+
+def population_drom() -> int:
+    return sum(territoire.population for territoire in DROM)
+
+
+def cout_alignement_mayotte(socle_mensuel: float = SOCLE_CIBLE) -> float:
+    """Ce que coûterait le socle plein à Mayotte, en Md€ bruts.
+
+    Ordre de grandeur, et il faut le dire comme tel : Mayotte est un
+    département très jeune — près de la moitié de sa population a moins de
+    18 ans — et la condition de séjour régulier y réduit l'assiette dans une
+    proportion que ce calcul ne connaît pas.
+    """
+    mayotte = next(t for t in DROM if t.nom == "Mayotte")
+    adultes = mayotte.population * 0.45
+    return socle_mensuel * 12 * adultes / MILLIARD
+
+
+# -- 10. l'indexation --------------------------------------------------------
+#
+# LA NOTE NE DIT PAS COMMENT LE SOCLE ÉVOLUE. Elle fixe une cible — 550 € — et
+# s'arrête là. Or un montant sans règle d'indexation n'est pas un droit : c'est
+# une ligne budgétaire qu'un arbitrage peut raboter chaque automne sans que
+# personne n'ait jamais voté sa baisse.
+#
+# Le précédent est connu : le point d'indice de la fonction publique n'a jamais
+# été indexé, et il a perdu près d'un quart de sa valeur en vingt ans, gel après
+# gel. Personne n'a voté cette baisse. Elle a simplement eu lieu.
+
+#: La règle actuelle des prestations sociales : revalorisation annuelle sur la
+#: moyenne des prix à la consommation hors tabac, avec un plancher qui interdit
+#: la baisse en cas de déflation.
+INDEXATION_ACTUELLE = "Art. L. 161-25 du code de la sécurité sociale"
+
+#: La croissance du niveau de vie médian, en euros constants : environ 0,8 %
+#: par an depuis 2014. C'est le rythme auquel le seuil de pauvreté s'éloigne
+#: d'un socle qui ne suivrait que les prix.
+CROISSANCE_NIVEAU_DE_VIE = 0.008
+
+HORIZONS = (0, 10, 20)
+
+
+@dataclass(frozen=True)
+class Indexation:
+    nom: str
+    croissance_reelle: float
+    description: str
+    defaut: str
+
+
+REGLES_INDEXATION = [
+    Indexation(
+        "Sur les prix", 0.0,
+        "La règle actuelle des minima sociaux. Le socle garde son pouvoir "
+        "d'achat, année après année.",
+        "Il décroche du niveau de vie, qui progresse plus vite que les prix. "
+        "Personne ne vote cette baisse : elle a lieu toute seule."),
+    Indexation(
+        "Sur le niveau de vie médian", CROISSANCE_NIVEAU_DE_VIE,
+        "Le socle garde sa position relative dans la société, et le seuil de "
+        "pauvreté cesse de s'en éloigner.",
+        "Le coût reste constant en part de l'assiette, donc la contribution ne "
+        "baisse jamais. C'est le prix de la promesse."),
+    Indexation(
+        "Sur les prix, plus la moitié de la croissance",
+        CROISSANCE_NIVEAU_DE_VIE / 2,
+        "Le compromis : le socle progresse, moins vite que la société, mais "
+        "sans décrocher.",
+        "Une règle composite est plus facile à contourner qu'une règle simple. "
+        "Elle demande donc une garantie écrite."),
+]
+
+
+@dataclass(frozen=True)
+class Projection:
+    annee: int
+    socle_reel: float       # € d'aujourd'hui
+    seuil_reel: float       # € d'aujourd'hui
+    part_du_seuil: float
+    taux: float
+
+
+def projeter(regle: Indexation, socle_mensuel: float = SOCLE_CIBLE,
+             horizons: tuple[int, ...] = HORIZONS) -> list[Projection]:
+    """Ce que devient le socle sous une règle donnée, en euros d'aujourd'hui.
+
+    Tout est exprimé en euros constants : l'inflation disparaît des deux côtés
+    et ne laisse voir que ce qui compte, l'écart entre le socle et le niveau de
+    vie du pays.
+
+    Le taux de contribution suit le rapport inverse : l'assiette progresse au
+    rythme de l'économie, le socle au rythme de sa règle. Un socle indexé sur
+    les seuls prix coûte donc un peu moins cher chaque année — ce qui est
+    exactement la même chose que dire qu'il donne un peu moins.
+    """
+    taux_initial = taux_publie(socle_mensuel)
+    projections = []
+    for annee in horizons:
+        croissance = (1 + regle.croissance_reelle) ** annee
+        reference = (1 + CROISSANCE_NIVEAU_DE_VIE) ** annee
+        socle = socle_mensuel * croissance
+        seuil = SEUIL_PAUVRETE * reference
+        projections.append(Projection(
+            annee=annee,
+            socle_reel=socle,
+            seuil_reel=seuil,
+            part_du_seuil=socle / seuil,
+            taux=taux_initial * croissance / reference))
+    return projections
+
+
+# -- 11. l'enveloppe qui reste -----------------------------------------------
+#
+# LES DEUX ARBITRAGES QUI RESTENT N'EN FONT PLUS QU'UN.
+#
+# Tant que le plafond n'était pas calculé, le niveau du socle et le forfait
+# enfant étaient deux questions séparées, chacune ouverte vers le haut. Les
+# deux décisions du parti — la contribution s'ajoute à l'impôt, le socle senior
+# est servi à tous — les ont refermées sur une même enveloppe : ce qui reste
+# entre la calibration retenue et le taux maximal constitutionnel.
+#
+# Cette enveloppe s'achète UNE FOIS. Mise sur le socle, elle ne l'est pas sur
+# le forfait, et réciproquement. C'est ce qui transforme deux questions vagues
+# en un arbitrage tranchable.
+
+
+def marge_disponible(socle_mensuel: float = SOCLE_CIBLE) -> float:
+    """Ce qui reste à dépenser avant le plafond, en Md€ par an."""
+    return (taux_maximal_constitutionnel()
+            - boucler(socle_mensuel).taux) * ASSIETTE_LARGE
+
+
+def socle_finance_par(marge_milliards: float,
+                      socle_mensuel: float = SOCLE_CIBLE) -> float:
+    """Le socle mensuel qu'atteint une enveloppe entièrement mise là."""
+    beneficiaires = POPULATION_18_64 + POPULATION_65_PLUS
+    return socle_mensuel + marge_milliards * MILLIARD / (beneficiaires * 12)
+
+
+def forfait_finance_par(marge_milliards: float,
+                        forfait_mensuel: float = None) -> float:
+    """Le forfait enfant qu'atteint une enveloppe entièrement mise là."""
+    if forfait_mensuel is None:
+        forfait_mensuel = FORFAIT_ILLUSTRATION
+    return forfait_mensuel + marge_milliards * MILLIARD / (ENFANTS * 12)
+
+
+@dataclass(frozen=True)
+class Usage:
+    """Une façon de dépenser l'enveloppe, et ce qu'elle produit."""
+    libelle: str
+    socle: float
+    forfait: float
+    effet: str
+
+
+def usages_de_la_marge(socle_mensuel: float = SOCLE_CIBLE) -> list[Usage]:
+    """Les trois façons de dépenser l'enveloppe, et leur effet sur les cas types.
+
+    Le partage retenu pour la troisième est la moitié-moitié, non parce qu'elle
+    serait optimale, mais parce qu'elle montre que l'arbitrage est continu :
+    entre les deux bornes, tout est possible, et rien n'est gratuit.
+    """
+    marge = marge_disponible(socle_mensuel)
+    return [
+        Usage("Tout sur le socle",
+              socle_finance_par(marge, socle_mensuel),
+              FORFAIT_ILLUSTRATION,
+              "Le célibataire sans emploi perd moins, tous les adultes "
+              "reçoivent plus, et la famille monoparentale reste où elle est."),
+        Usage("Tout sur le forfait enfant",
+              socle_mensuel,
+              forfait_finance_par(marge),
+              "La famille monoparentale se rapproche de la neutralité sans "
+              "l'atteindre, et rien ne change pour les personnes seules."),
+        Usage("Moitié-moitié",
+              socle_finance_par(marge / 2, socle_mensuel),
+              forfait_finance_par(marge / 2),
+              "Chacun des deux cas types perdants progresse d'un peu moins de "
+              "la moitié de ce qu'il aurait gagné dans la colonne qui le "
+              "concerne."),
+    ]
+
+
+def ecart_apres_usage(usage: Usage, indice: int) -> float:
+    """L'écart d'un cas type sous un usage donné de l'enveloppe."""
+    return cas_types(socle=usage.socle, forfait=usage.forfait)[indice].ecart
