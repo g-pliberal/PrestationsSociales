@@ -16,11 +16,67 @@ vérifier, et le rédacteur suivant doit savoir ce qu'il a le droit de changer.
 
 from __future__ import annotations
 
+import json
+import re
 from pathlib import Path
 
+import chiffrage as ch
 import gabarit as g
 
 RACINE = Path(__file__).resolve().parent.parent
+
+#: L'espace fine insécable, séparateur des milliers et espace d'avant-symbole.
+#: Les intitulés étant échappés (voir `gabarit._propre`), les nombres sont
+#: écrits avec le caractère lui-même et jamais avec une entité HTML.
+FINE = "\u202f"
+
+
+def md(milliards: float) -> str:
+    """Un montant en milliards d'euros, à la française.
+
+    La décimale tombe quand elle est nulle : « 264 Md€ » et non « 264,0 Md€ ».
+    Un zéro décimal sur un chiffre de cadrage promet une précision qu'aucune de
+    ces sources n'a.
+    """
+    texte = f"{milliards:,.1f}".replace(",", FINE).replace(".", ",")
+    if texte.endswith(",0"):
+        texte = texte[:-2]
+    return texte + f"{FINE}Md€"
+
+
+def eur(montant: float) -> str:
+    """Un montant en euros, arrondi à l'euro."""
+    return f"{montant:,.0f}".replace(",", FINE) + f"{FINE}€"
+
+
+def pourcent(part: float) -> str:
+    """Une part, en points de pourcentage entiers."""
+    return f"{part * 100:.0f}{FINE}%"
+
+
+def ancre(texte: str) -> str:
+    """Une ancre stable, déduite d'un intitulé.
+
+    Stable est le mot : `hash()` change d'une exécution à l'autre, et une ancre
+    qui change à chaque construction ferait échouer `verifier.py` un jour sur
+    deux sans que rien n'ait bougé dans le texte.
+    """
+    sans_accent = (texte.lower()
+                   .replace("é", "e").replace("è", "e").replace("ê", "e")
+                   .replace("à", "a").replace("â", "a").replace("ô", "o")
+                   .replace("î", "i").replace("ï", "i").replace("û", "u")
+                   .replace("ç", "c").replace("'", " ").replace("’", " "))
+    mots = [mot for mot in re.split(r"[^a-z0-9]+", sans_accent) if mot]
+    return "-".join(mots[:5])
+
+
+def ecart_monoparental(forfait: float) -> str:
+    """Ce qu'un niveau de forfait enfant fait au cas type monoparental."""
+    cas = ch.cas_types(forfait=forfait)[1]
+    if cas.ecart >= 0:
+        return f"Neutre, ou gagnante de {eur(cas.ecart)} par mois."
+    return (f"Perd {eur(-cas.ecart)} par mois, soit "
+            f"{abs(cas.part) * 100:.0f}{FINE}% de son revenu disponible.")
 
 # Les paramètres que la note laisse ouverts. Ils sont ici, ensemble, parce que le
 # site les répète et qu'une valeur répétée à quinze endroits finit par ne plus
@@ -350,6 +406,16 @@ def socle():
             "reprend progressivement le transfert auprès des revenus moyens et élevés. "
             "<a href=\"financement.html\">Voir le financement</a>.</p>",
             "avertissement")
+        + f"<p>Ce coût net, la note ne le donne pas. Il est calculé sur la page "
+        f"du financement : <strong>{md(ch.boucler().net)}</strong> une fois "
+        f"déduites les prestations que le socle absorbe, soit une contribution "
+        f"de solidarité de <strong>{pourcent(ch.taux_publie())}</strong> et un "
+        f"point de bascule à {eur(ch.boucler().bascule_mensuelle)} de revenu "
+        "mensuel — en dessous, on reçoit plus qu'on ne verse. "
+        '<a href="financement.html#net">Voir le calcul, ligne à ligne</a></p>'
+        + g.repere("Coût net calculé à partir des dépenses constatées de "
+                   "chaque prestation absorbée ; taux rapporté à une assiette "
+                   "de l'ordre de celle de la CSG.")
         + "<p>Le socle n'est pas conçu comme un revenu de confort, et il ne remplace "
         "pas le salaire. Il garantit une sécurité minimale, compatible avec la reprise "
         "d'activité, l'entrepreneuriat, la formation, le temps partiel, les revenus "
@@ -497,22 +563,41 @@ def simulateur():
             "forfait enfant, non — la note les renvoie au calibrage budgétaire. Ils "
             "sont donc réglables ici, et les chiffres ci-dessous en dépendent "
             "entièrement.</p>"
+            "<p>Leurs valeurs par défaut ne sont pas des nombres ronds choisis "
+            "à la main. La valeur par défaut d'un calculateur public finit par "
+            "être citée comme « le chiffre du parti », et un chiffre rond n'a "
+            "rien à opposer : celles-ci sont <strong>calculées</strong>. Le "
+            f"taux de {pourcent(ch.boucler().taux)} est celui qui boucle le "
+            f"financement du socle ; le forfait de "
+            f"{eur(ch.FORFAIT_ILLUSTRATION)} est celui qui coûte exactement ce "
+            "que le crédit familial remplace. "
+            '<a href="financement.html">Voir le bouclage</a></p>'
             '<form id="reglages" class="grille" novalidate>'
             + g.liste("socle", "Socle adulte", [
                 ("500", "500 € par mois — première marche"),
                 ("550", "550 € par mois — cible"),
                 ("600", "600 € par mois"),
             ], str(SOCLE_CIBLE), "Ordre de grandeur donné par la note (§4).")
-            + g.champ("taux", "Contribution de solidarité", "30",
-                      "En % du revenu du travail. Taux d'illustration.",
+            + g.champ("taux", "Contribution de solidarité",
+                      f"{ch.boucler().taux * 100:.0f}",
+                      "En % du revenu. Le taux qui boucle le financement.",
                       attributs={"min": "0", "max": "70", "step": "1",
                                  "inputmode": "numeric"})
-            + g.champ("forfait", "Forfait enfant", "200",
-                      "En euros par mois. Non fixé par la note.",
+            + g.champ("forfait", "Forfait enfant", str(ch.FORFAIT_ILLUSTRATION),
+                      "En euros par mois. Le forfait qui équilibre le bloc "
+                      "familial.",
                       attributs={"min": "0", "max": "1000", "step": "10",
                                  "inputmode": "numeric"})
             + "</form>", "reglages-bloc")
     )
+
+    # Les barèmes 2026 de la colonne « aujourd'hui », écrits DANS la page.
+    # Le script ne doit en recopier aucun : deux jeux de barèmes finiraient par
+    # ne plus dire la même chose, et c'est la faute que ce dépôt s'interdit déjà
+    # pour le texte du programme.
+    baremes = ('<script id="baremes" type="application/json">'
+               + json.dumps(ch.baremes_du_calculateur(), ensure_ascii=True)
+               + "</script>")
 
     resultat = (
         '<div id="resultat" aria-live="polite">'
@@ -576,10 +661,13 @@ def simulateur():
              "Complément handicap, dépendance, aides d'urgence, assurance chômage "
              "contributive et pensions contributives s'ajoutent au socle et ne sont pas "
              'dans ce calcul. <a href="protections.html">Voir les protections</a>'),
-            ("Vos droits d'aujourd'hui",
-             "Pour ce que vous touchez sous les règles actuelles, seuls les organismes "
-             "font foi : <a href=\"https://www.service-public.fr/\">service-public.fr</a> "
-             "et votre caisse."),
+            ("La colonne « aujourd'hui » est une estimation",
+             "Elle applique les barèmes 2026 à la situation saisie, et elle ne "
+             "connaît ni votre loyer, ni votre zone, ni votre trimestre de "
+             "référence. Pour des situations chiffrées une par une, voir les "
+             '<a href="cas-types.html">cas types</a> ; pour vos droits réels, '
+             "seuls les organismes font foi "
+             '(<a href="https://www.service-public.fr/">service-public.fr</a>).'),
         ])
     )
 
@@ -596,7 +684,180 @@ def simulateur():
         [("lecture", "Comment ce chiffre est obtenu", lecture),
          ("reserves", "Ce que ce calcul ne dit pas", reserves)],
         tete=formulaire + resultat,
-        scripts='<script src="moteur/simulateur.js" defer></script>')
+        scripts=baremes + '<script src="moteur/simulateur.js" defer></script>')
+
+
+# -- 3 bis. les cas types ----------------------------------------------------
+#
+# LA NOTE DEMANDE CES CAS-TYPES ET NE LES PRODUIT PAS. Elle désigne les familles
+# monoparentales comme son risque social principal et renvoie leur chiffrage à
+# plus tard (§20.2). Tant qu'ils manquent, la seule réponse du site à « est-ce
+# que j'y gagne ? » est un calculateur qui ne connaît pas le système actuel.
+#
+# LA RÈGLE DE CETTE PAGE EST D'AFFICHER LES PERDANTS D'ABORD. Un jeu de
+# cas-types qui ne montre que des gagnants ne tient pas le premier
+# contre-exemple venu ; un jeu qui nomme ses perdants et dit ce qu'il propose
+# pour eux est le seul dont on garde la main. Trois des sept perdent.
+
+def _cas_type(cas) -> str:
+    """Une situation, en une carte : le détail, les deux régimes, l'écart.
+
+    La carte est encadrée parce qu'elle sera capturée et partagée hors du site —
+    c'est ce qu'on fait d'un cas type, et il doit rester lisible seul.
+    """
+    badge = ('<span class="badge">perdant</span>' if cas.perdant
+             else '<span class="badge proposition">gagnant</span>' if cas.gagnant
+             else '<span class="badge proposition">à peu près neutre</span>')
+    def detail(postes):
+        """Les postes d'un régime, en une ligne. Un poste nul n'est pas un
+        poste : « prime d'activité 0 € » n'apprend rien et alourdit la carte."""
+        return " + ".join(
+            f"{libelle} {eur(montant)}" if montant >= 0
+            else f"{libelle} − {eur(-montant)}"
+            for libelle, montant in postes if round(montant) != 0)
+    signe = "+" if cas.ecart >= 0 else "−"
+    corps = (
+        g.tableau(
+            ["Régime", "Composition", "Par mois"],
+            [["Aujourd'hui", detail(cas.aujourd_hui),
+              f"<strong>{eur(cas.avant)}</strong>"],
+             ["Avec le socle", detail(cas.demain),
+              f"<strong>{eur(cas.apres)}</strong>"],
+             ["<strong>Écart</strong>", badge,
+              f"<strong>{signe} {eur(abs(cas.ecart))}</strong> "
+              f"({signe} {abs(cas.part) * 100:.0f} %)"]],
+            ["texte", "long", "nombre"],
+            f"{cas.nom} : aujourd'hui et avec le socle")
+        + f"<p>{cas.lecture}</p>"
+        + (g.note(f"<p><strong>Réserve.</strong> {cas.reserve}</p>")
+           if cas.reserve else "")
+    )
+    return g.cle(cas.nom, cas.detail, corps,
+                 identifiant="cas-" + ancre(cas.nom))
+
+
+def cas_types():
+    b = ch.boucler()
+    cas = ch.cas_types()
+    perdants = [c for c in cas if c.perdant]
+    autres = [c for c in cas if not c.perdant]
+
+    reperes = g.fiches([
+        ("Situations chiffrées", str(len(cas)),
+         "Des barèmes 2026 d'un côté, le programme de l'autre."),
+        ("Dont perdantes", str(len(perdants)),
+         "Elles sont détaillées en premier, avec ce qu'il faudrait pour "
+         "les fermer."),
+        ("Socle qui ne ferait aucun perdant", eur(ch.SOCLE_NEUTRALITE),
+         f"Contre {eur(ch.SOCLE_CIBLE)} dans la cible de la note."),
+    ])
+
+    lecture = (
+        "<p>Un programme qui ne publie que ses gagnants se fait définir par ses "
+        "perdants. Cette page fait donc l'inverse : elle chiffre sept "
+        "situations aux barèmes en vigueur, elle commence par celles qui "
+        "perdent, et elle dit pour chacune ce qu'il faudrait décider pour que "
+        "la perte disparaisse.</p>"
+        + g.gestes([
+            "<strong>La colonne « aujourd'hui » est au barème 2026</strong> — "
+            "RSA, aide au logement, allocations familiales, AAH, ASPA, prime "
+            "d'activité. Ce sont des montants publiés, vérifiables un par un.",
+            "<strong>La colonne « avec le socle » applique la note</strong> — "
+            f"socle de {eur(ch.SOCLE_CIBLE)}, forfait enfant de "
+            f"{eur(ch.FORFAIT_ILLUSTRATION)}, contribution de "
+            f"{pourcent(b.taux)} sur le revenu du travail.",
+            "<strong>Rien d'autre ne bouge</strong> — la contribution est "
+            "prise sur le revenu tel qu'il est versé aujourd'hui. Le sort de "
+            "l'impôt sur le revenu n'est pas modélisé, parce que la note ne le "
+            'tranche pas. <a href="financement.html#contribution-et-impot">Voir '
+            "pourquoi c'est le point le plus important</a>.",
+        ])
+        + g.note(
+            "<p><strong>Ce ne sont pas des droits, et ce ne sont pas des "
+            "moyennes.</strong> Une aide au logement varie du simple au double "
+            "selon la zone et le loyer ; une prime d'activité dépend du "
+            "trimestre. Chaque cas type dit l'hypothèse qu'il retient, et elle "
+            "est prise du côté défavorable au programme quand elle est "
+            "incertaine — un résultat flatteur obtenu par une hypothèse "
+            "généreuse serait le seul qu'on ne puisse pas défendre.</p>",
+            "avertissement")
+        + g.repere("Barèmes au 1ᵉʳ avril 2026 pour les prestations revalorisées, "
+                   "au 1ᵉʳ janvier 2026 pour l'ASPA. Seuil de pauvreté INSEE : "
+                   f"{eur(ch.SEUIL_PAUVRETE)} par mois pour une personne seule.")
+    )
+
+    ceux_qui_perdent = (
+        "<p>Les trois situations ci-dessous perdent avec la calibration que la "
+        "note retient. Deux d'entre elles se ferment par une décision qui ne "
+        "coûte presque rien ; la troisième est l'arbitrage central du "
+        "programme.</p>"
+        + "".join(_cas_type(c) for c in perdants)
+        + g.note(
+            "<p><strong>Ce que ces trois cas ont en commun : ils n'ont pas de "
+            "revenu du travail.</strong> Le socle leur apporte moins que "
+            "l'empilement actuel parce que cet empilement était, pour eux, "
+            "plus généreux que le socle — c'est la contrepartie arithmétique "
+            "de la simplicité. Le programme ne peut pas à la fois supprimer le "
+            "millefeuille et garantir que personne n'y perde, sauf à porter le "
+            f"socle à {eur(ch.SOCLE_NEUTRALITE)} et la contribution à "
+            f"{pourcent(ch.boucler(ch.SOCLE_NEUTRALITE).taux)}. "
+            '<a href="financement.html#arbitrage">Voir ce que coûte chaque '
+            "niveau de socle</a></p>", "vigilance")
+    )
+
+    ceux_qui_gagnent = (
+        "<p>Les quatre autres situations gagnent ou sont à peu près neutres. "
+        "Les deux dernières sont les meilleurs arguments du programme, et le "
+        "site ne les chiffrait nulle part.</p>"
+        + "".join(_cas_type(c) for c in autres)
+    )
+
+    profil = (
+        "<p>Mis bout à bout, les sept cas dessinent un profil, et il vaut mieux "
+        "le connaître avant qu'un institut ne le publie.</p>"
+        + g.points([
+            ("Les grands gagnants sont au milieu",
+             "Le couple bi-actif est le plus gros gain de la série, parce que "
+             "l'individualisation double un versement là où le système actuel, "
+             "qui raisonne par foyer, ne verse presque rien. C'est mérité, "
+             "c'est cohérent, et c'est très coûteux."),
+            ("Les perdants sont tout en bas",
+             "Les trois perdants sont les trois situations sans revenu du "
+             "travail. Une réforme qui prend au premier décile pour "
+             "redistribuer au cinquième est défendable si on l'assume ; elle "
+             "est indéfendable si on la découvre en campagne."),
+            ("Les jeunes sont le meilleur terrain",
+             "L'étudiant décohabitant multiplie par trois sa ressource "
+             "publique, et c'est le seul cas où le programme tient exactement "
+             "ce qu'il promet : plus simple, plus généreux, sans dossier."),
+            ("Le travail est mieux traité partout",
+             "Aucun des sept ne perd en travaillant davantage. C'est vrai, "
+             "c'est vérifiable, et c'est le seul argument qui ne dépende "
+             "d'aucune hypothèse de calibrage."),
+        ])
+        + g.note(
+            f"<p>{ch.contrainte_structurelle()}</p>", "vigilance")
+        + g.repere("Écarts calculés à partir des sept situations ci-dessus, "
+                   f"pour un socle de {eur(ch.SOCLE_CIBLE)} et une contribution "
+                   f"de {pourcent(b.taux)}.")
+    )
+
+    return page(
+        "cas-types.html",
+        f"Cas types — {g.TITRE_SITE}",
+        "Sept situations chiffrées aux barèmes 2026, avant et après la "
+        "réforme, perdants compris : célibataire au RSA, famille "
+        "monoparentale, minimum vieillesse, AAH, SMIC, couple bi-actif, "
+        "étudiant.",
+        "Cas types",
+        "Sept situations,<br>perdants compris",
+        "Ce que chacun touche aujourd'hui, ce qu'il toucherait avec le socle, "
+        "et l'écart. Les situations qui perdent sont en premier.",
+        [("lecture", "Comment ces chiffres sont faits", lecture),
+         ("perdants", "Les situations qui perdent", ceux_qui_perdent),
+         ("gagnants", "Les situations qui gagnent", ceux_qui_gagnent),
+         ("profil", "Ce que l'ensemble dessine", profil)],
+        tete=reperes)
 
 
 # -- 4. les jeunes -----------------------------------------------------------
@@ -1083,45 +1344,213 @@ def nouveaux_residents():
 
 
 # -- 8. le financement -------------------------------------------------------
+#
+# CETTE PAGE PORTE LE CHIFFRAGE, et c'est le seul endroit du site où une phrase
+# ne vient pas de la note. La note pose la règle — « présenté en coût net,
+# jamais seulement en coût brut » (§18) — et s'arrête là. La page publiait donc
+# 264 Md€ en gros, disait qu'il fallait regarder le coût net, et ne le donnait
+# pas : elle posait la question et laissait la réponse à l'adversaire.
+#
+# Tous les nombres ci-dessous sortent de `chiffrage.py`. Aucun n'est recopié.
 
 def financement():
+    b = ch.boucler()
     reperes = g.fiches([
-        ("Coût brut à 550 € par mois", "264&nbsp;Md€",
-         "Pour environ 40 millions de personnes de 18 à 64 ans."),
-        ("Ce qu'il faut regarder", "Le coût net",
-         "Prestations supprimées, recettes de la contribution, effets de retour, "
-         "économies administratives."),
-        ("Niveaux sur la fiche de paie", "3",
-         "Brut complet, net contributif, net après solidarité."),
+        ("Coût brut du socle adulte", md(b.brut),
+         f"{ch.SOCLE_CIBLE} € par mois pour environ 40 millions de personnes "
+         "de 18 à 64 ans."),
+        ("Coût net, une fois les prestations absorbées", md(b.net),
+         "C'est ce chiffre-là qu'il faut financer, et lui seul."),
+        ("Contribution de solidarité correspondante", pourcent(b.taux),
+         "Sur une assiette large, de l'ordre de celle de la CSG."),
     ])
 
+    lignes = [[f"<strong>Coût brut</strong> — {ch.SOCLE_CIBLE} € × 12 × 40 millions",
+               f"<strong>{md(b.brut)}</strong>", ""]]
+    for poste in ch.ABSORBEES:
+        lignes.append([poste.libelle, f"− {md(poste.milliards)}", poste.detail])
+    lignes.append(["<strong>Coût net à financer</strong>",
+                   f"<strong>{md(b.net)}</strong>",
+                   "Le seul chiffre qui commande le reste."])
+
     net = (
-        "<p>La note pose une règle de présentation, et elle vaut avertissement : le "
-        "revenu universel doit être présenté <strong>en coût net, jamais seulement en "
-        "coût brut</strong>. À 550&nbsp;€ par mois, le socle adulte représente environ "
-        "264&nbsp;Md€ de coût brut annuel — un chiffre élevé, qui ne correspond pas au "
-        "coût réel de la réforme.</p>"
-        "<p>Le coût net dépend de quatre éléments :</p>"
-        + g.gestes([
-            "les <strong>prestations supprimées ou absorbées</strong> — RSA, prime "
-            "d'activité, APL pour la majorité, aides jeunes, une partie des prestations "
-            "familiales ;",
-            "les <strong>recettes de la contribution de solidarité</strong>, qui reprend "
-            "le transfert sur les revenus moyens et élevés ;",
-            "les <strong>effets de retour</strong> sur l'emploi et l'activité, une fois "
-            "les trappes à inactivité levées ;",
-            "les <strong>économies administratives</strong>, et l'effet inverse du "
-            "non-recours.",
+        "<p>La note pose une règle de présentation et n'en tire pas les "
+        "conséquences : le revenu universel doit être présenté <strong>en coût "
+        "net, jamais seulement en coût brut</strong>. Voici donc le coût net. "
+        "Il est calculé à partir des dépenses publiques constatées, et chaque "
+        "ligne porte sa source.</p>"
+        + g.tableau(
+            ["Poste", "Montant annuel", "Ce que c'est"],
+            lignes, ["long", "nombre", "long"],
+            "Du coût brut au coût net du socle adulte")
+        + g.note(
+            "<p><strong>Les prestations familiales n'apparaissent pas dans ce "
+            "tableau, et c'est volontaire.</strong> La note ne les supprime "
+            "pas : elle les remplace par le crédit familial (§8). Une "
+            "prestation remplacée n'est pas une économie — elle finance le "
+            "dispositif qui la remplace. Les inscrire ici ferait apparaître "
+            f"{md(ch.CONTREPARTIE_FAMILIALE_TOTALE)} de recettes qui "
+            "n'existent pas, et ce serait la première chose qu'un "
+            "contradicteur démonterait.</p>")
+        + g.repere("Dépenses constatées : CNAF, comptes 2024 ; prime "
+                   "d'activité, PLF 2024. Coût brut calculé sur l'hypothèse de "
+                   "population de la note elle-même (§4).")
+    )
+
+    taux = (
+        f"<p>Financer {md(b.net)} suppose une assiette. La seule assiette large "
+        "déjà en place est celle de la CSG : elle rapporte "
+        f"{md(ch.CSG_RENDEMENT)} à un taux moyen d'environ "
+        f"{pourcent(ch.CSG_TAUX_MOYEN)}, elle est donc de l'ordre de "
+        f"{md(ch.ASSIETTE_LARGE)}. Le rapport donne le taux :</p>"
+        + g.tableau(
+            ["Ce qu'il faut financer", "Assiette", "Contribution de solidarité"],
+            [[md(b.net), md(ch.ASSIETTE_LARGE),
+              f"<strong>{pourcent(b.taux)}</strong>"]],
+            ["nombre", "nombre", "nombre"],
+            "Le taux de la contribution, pour un socle de "
+            f"{ch.SOCLE_CIBLE} € par mois")
+        + "<p>Ce taux est un chiffre lourd, et il vaut mieux l'écrire soi-même "
+        "que se le faire écrire. Il a une contrepartie, que le site ne disait "
+        "nulle part — <strong>le point de bascule</strong> : le revenu à partir "
+        "duquel la contribution dépasse le socle reçu.</p>"
+        + g.engagements([
+            (pourcent(b.taux), "La contribution de solidarité",
+             "Un taux unique, sur une assiette large, pour financer le socle."),
+            (eur(b.bascule_mensuelle), "Le point de bascule",
+             "En dessous de ce revenu mensuel, on reçoit plus qu'on ne verse. "
+             "C'est le cas de l'écrasante majorité des actifs."),
         ])
-        + g.source("Note de doctrine, §18 — Financement.")
+        + g.repere("Rendement et taux moyen de la CSG, 2025. L'assiette en est "
+                   "déduite, et le taux est le rapport du coût net à cette "
+                   "assiette.")
+    )
+
+    arbitrage = (
+        "<p>Le taux ci-dessus dépend entièrement du niveau du socle, et c'est "
+        "là qu'est l'arbitrage réel du programme. Le voici en entier, y compris "
+        "la calibration que la note n'envisage pas : celle qui ne fait "
+        "<em>aucun</em> perdant.</p>"
+        + g.tableau(
+            ["Socle adulte", "Coût net", "Contribution", "Point de bascule",
+             "Ce que ça fait"],
+            [[eur(c.socle) + " / mois", md(c.net), pourcent(c.taux),
+              eur(c.bascule_mensuelle) + " / mois",
+              ("Première marche de la transition (note, §20.1)."
+               if c.socle == ch.SOCLE_MARCHE else
+               "Cible de régime stabilisé (note, §4)."
+               if c.socle == ch.SOCLE_CIBLE else
+               "Le socle auquel plus personne ne perd — voir les "
+               '<a href="cas-types.html">cas types</a>.'
+               if c.socle == ch.SOCLE_NEUTRALITE else
+               "Haut de la fourchette citée par la note.")]
+             for c in ch.calibrations()],
+            ["texte", "nombre", "nombre", "nombre", "long"],
+            "Ce que coûte chaque niveau de socle")
+        + g.note(
+            f"<p>{ch.contrainte_structurelle()}</p>", "vigilance")
+        + g.repere("Le socle de neutralité n'est pas choisi : il est calculé "
+                   "comme la somme du RSA, forfait logement déduit, et de "
+                   "l'aide au logement d'un foyer sans ressources, au barème "
+                   "2026.")
+    )
+
+    trous = (
+        "<p>Trois montants manquent au programme, et l'ordre de grandeur de "
+        "chacun est tel qu'aucun chiffrage ne tient tant qu'ils ne sont pas "
+        "écrits. Les voici, avec ce que chaque réponse coûte.</p>"
+        + g.depliant(
+            "Le socle senior — un écart de 93 milliards",
+            "<p>La note pose trois étages (§3) et n'en chiffre qu'un. Le coût "
+            f"brut de {md(b.brut)} ne couvre que les 18-64 ans. Pour le "
+            "troisième étage, deux lectures, et elles ne coûtent pas la même "
+            "chose :</p>"
+            + g.tableau(
+                ["Lecture", "Montant servi", "Coût net", "Conséquence"],
+                [[etage.libelle, etage.montant, md(etage.cout_net),
+                  etage.consequence]
+                 for etage in ch.etages_seniors()],
+                ["long", "texte", "nombre", "long"],
+                "Les deux lectures possibles du socle senior")
+            + "<p>Tant que ce n'est pas tranché, un lecteur qui applique le "
+            f"socle adulte lit une baisse de {eur(ch.ASPA_PERSONNE_SEULE)} à "
+            f"{eur(ch.SOCLE_CIBLE)} sur le minimum vieillesse. Écrire que le "
+            "socle senior est servi au niveau de l'ASPA ferme la question pour "
+            f"{md(ch.ASPA_COUT)}.</p>",
+            "socle-senior")
+        + g.depliant(
+            "Le forfait enfant — le montant qui décide du sort des monoparentales",
+            "<p>Le crédit familial remplace "
+            f"{md(ch.CONTREPARTIE_FAMILIALE_TOTALE)} de prestations familiales "
+            "et de quotient familial. Son forfait n'est pas chiffré par la "
+            "note. Or c'est lui qui décide si la famille monoparentale perd, "
+            "et de combien.</p>"
+            + g.tableau(
+                ["Forfait enfant", "Ce qu'il coûte", "Écart avec ce qu'il remplace",
+                 "Ce qu'il fait au cas type monoparental"],
+                [[eur(forfait) + " / mois", md(ch.cout_forfait(forfait)),
+                  ("− " if ch.cout_forfait(forfait) < ch.CONTREPARTIE_FAMILIALE_TOTALE
+                   else "+ ")
+                  + md(abs(ch.cout_forfait(forfait)
+                           - ch.CONTREPARTIE_FAMILIALE_TOTALE)),
+                  ecart_monoparental(forfait)]
+                 for forfait in ch.FORFAITS_COMPARES],
+                ["texte", "nombre", "nombre", "long"],
+                "Ce que coûte chaque niveau de forfait enfant")
+            + "<p>La lecture est sans échappatoire : le forfait qui équilibre "
+            f"le bloc familial est de {eur(ch.FORFAIT_NEUTRE_BUDGET)}, celui "
+            "qui protège les familles monoparentales est nettement au-dessus, "
+            "et l'écart entre les deux est le prix de la promesse faite au "
+            "§7.</p>",
+            "forfait-enfant")
+        + g.depliant(
+            "La contribution et l'impôt sur le revenu — la question non tranchée",
+            "<p>La note crée une contribution de solidarité proportionnelle "
+            "(§18) sans jamais dire si elle <strong>remplace</strong> l'impôt "
+            "sur le revenu ou si elle s'y <strong>ajoute</strong>. Les deux "
+            "lectures sont ouvertes par le même texte, et elles ne décrivent "
+            "pas le même programme.</p>"
+            + g.tableau(
+                ["Lecture", "Ce qu'elle produit"],
+                [[titre, corps]
+                 for titre, corps in ch.lectures_de_la_contribution(b)],
+                ["texte", "long"],
+                "Les deux lectures ouvertes par la note")
+            + "<p>C'est le seul point de ce chiffrage qu'un calcul ne peut pas "
+            "fermer : il appelle une décision. Tant qu'elle n'est pas écrite, "
+            "chacun peut attribuer au programme celle des deux qui l'arrange, "
+            "et ce ne sera pas la nôtre.</p>",
+            "contribution-et-impot")
+        + g.repere("Rendement de l'impôt sur le revenu : "
+                   f"{md(ch.IR_RENDEMENT)} en 2024.")
+    )
+
+    exclus = (
+        "<p>Un bouclage se juge autant à ce qu'il refuse de compter qu'à ce "
+        "qu'il compte. Trois postes que la note range parmi ses sources de "
+        "financement (§18) sont écartés ici, et il vaut mieux dire pourquoi "
+        "que de se le faire demander.</p>"
+        + g.points([(titre, corps) for titre, corps in ch.EXCLUS_DU_BOUCLAGE])
+        + g.note(
+            "<p>Le troisième mérite qu'on s'y arrête, parce que c'est une "
+            "erreur de raisonnement et non un désaccord d'hypothèse. La note "
+            "inscrit « l'effet inverse du non-recours » parmi ses recettes. "
+            "Servir enfin tous ceux qui ont droit est une <strong>dépense "
+            "supplémentaire</strong>, et c'est l'une des promesses du "
+            "programme : l'automaticité n'a d'intérêt que si elle coûte ce "
+            "que le non-recours économisait. Le coût net ci-dessus l'intègre "
+            "déjà, puisque le socle est versé à tous par construction.</p>",
+            "vigilance")
+        + g.source("Note de doctrine, §18 — les postes écartés y figurent ; "
+                   "le motif de leur exclusion est propre à ce chiffrage.")
     )
 
     contribution = (
-        "<p>Une <strong>contribution de solidarité</strong> clairement identifiée est "
-        "créée, distincte des cotisations contributives. Elle finance le revenu universel "
-        "et les prestations non contributives maintenues. La fiche de paie et le revenu "
-        "s'organisent alors autour de trois niveaux, qui répondent à trois questions "
-        "différentes.</p>"
+        "<p>Une <strong>contribution de solidarité</strong> clairement "
+        "identifiée est créée, distincte des cotisations contributives. Elle "
+        "finance le revenu universel et les prestations non contributives "
+        "maintenues. La fiche de paie et le revenu s'organisent alors autour de "
+        "trois niveaux, qui répondent à trois questions différentes.</p>"
         + g.tableau(
             ["Niveau", "Signification"],
             [["Brut complet", "Le coût total du travail"],
@@ -1130,12 +1559,12 @@ def financement():
               "Le revenu après la contribution qui finance le socle"]],
             ["texte", "long"],
             "Les trois niveaux de la fiche de paie")
-        + "<p>Cette architecture sépare enfin ce qui relève de l'assurance, ce qui relève "
-        "de la solidarité, et ce qui reste disponible. Le financement combine :</p>"
+        + "<p>Cette architecture sépare enfin ce qui relève de l'assurance, ce "
+        "qui relève de la solidarité, et ce qui reste disponible. Au-delà de la "
+        "contribution, la note cite d'autres leviers, qu'elle ne chiffre "
+        "pas :</p>"
         + '<ul class="serree">'
         + "".join(f"<li>{item}</li>" for item in [
-            "la suppression ou l'absorption de prestations existantes",
-            "un impôt proportionnel sur les revenus",
             "la fiscalité de consommation",
             "la fiscalité foncière, notamment une "
             + g.mot("Land Value Tax",
@@ -1143,47 +1572,65 @@ def financement():
                     "est bâti dessus : il taxe la rente foncière sans décourager la "
                     "construction."),
             "des économies sur les dépenses sociales redondantes",
-            "les effets de croissance liés à la reprise d'activité et à la simplification",
         ])
         + "</ul>"
+        + g.note(
+            "<p>Ces leviers ne sont pas dans le bouclage ci-dessus, et c'est "
+            "délibéré : <strong>tant qu'ils ne portent pas de montant et "
+            "d'assiette, ils se lisent comme une menace plutôt que comme une "
+            "recette.</strong> Une ligne « fiscalité foncière » sans chiffre "
+            "devient, dans la bouche d'un adversaire, un impôt sur la maison de "
+            "chacun. Le bouclage tient sans eux ; ils doivent être chiffrés "
+            "avant d'être cités.</p>", "vigilance")
         + g.source("Note de doctrine, §18.")
     )
 
     progressivite = (
         "<p>Le socle permet de reconstruire une progressivité effective "
-        "<strong>avec un impôt proportionnel</strong>. Elle n'est plus produite par un "
-        "barème à tranches, mais par la combinaison d'un montant fixe versé à tous et "
-        "d'un prélèvement au même taux pour tous.</p>"
+        "<strong>avec un impôt proportionnel</strong>. Elle n'est plus produite "
+        "par un barème à tranches, mais par la combinaison d'un montant fixe "
+        "versé à tous et d'un prélèvement au même taux pour tous. Le point de "
+        f"bascule est à {eur(b.bascule_mensuelle)} par mois :</p>"
         + g.tableau(
-            ["Revenu annuel", "Effet du socle", "Effet redistributif"],
-            [["Faible revenu", "Socle supérieur à l'impôt payé", "Bénéficiaire net"],
-             ["Revenu moyen", "Socle partiellement repris par l'impôt",
-              "Contribution nette modérée"],
-             ["Haut revenu", "Impôt largement supérieur au socle", "Contributeur net"]],
-            ["texte", "long", "texte"],
-            f"Exemple simplifié, avec un socle de {SOCLE_ANNUEL_TEXTE} par an")
-        + '<p class="actions"><a class="bouton" href="simulateur.html">Voir sur votre '
-        "revenu</a></p>"
+            ["Revenu mensuel du travail", "Contribution", "Socle reçu", "Position"],
+            [[eur(revenu), eur(revenu * b.taux), eur(ch.SOCLE_CIBLE),
+              "Bénéficiaire net" if revenu * b.taux < ch.SOCLE_CIBLE
+              else "Contributeur net"]
+             for revenu in (0, 1500, 3000, 4500, 8000)],
+            ["nombre", "nombre", "nombre", "texte"],
+            f"La progressivité, avec un socle de {SOCLE_ANNUEL_TEXTE} par an et "
+            f"une contribution de {pourcent(b.taux)}")
+        + '<p class="actions"><a class="bouton" href="simulateur.html">Voir sur '
+        'votre revenu</a> <a class="bouton" href="cas-types.html">Voir les cas '
+        "types</a></p>"
         + g.note(
-            "<p>Le principal risque identifié est budgétaire : <strong>sous-estimer le "
-            "coût net</strong>. Le socle doit donc être calibré prudemment — une première "
-            "marche à 500&nbsp;€ est plus sûre qu'un basculement immédiat à 550 ou "
-            "600&nbsp;€, la cible de 550&nbsp;€ étant affichée comme objectif de régime "
-            "stabilisé, sous condition de bouclage fiscal.</p>", "vigilance")
+            "<p><strong>La progressivité du taux moyen n'est pas celle du taux "
+            "marginal.</strong> Un prélèvement proportionnel fait payer au "
+            "dernier décile la même part que le milieu, là où le barème actuel "
+            "lui en fait payer davantage. C'est un choix défendable — il est "
+            "lisible, il ne se contourne pas, il ne crée aucun effet de "
+            "seuil — mais c'en est un, et il doit être assumé comme tel plutôt "
+            "que présenté comme une équivalence technique.</p>", "vigilance")
         + g.source("Note de doctrine, §18 et §20.1 — Risque budgétaire.")
     )
 
     return page(
         "financement.html",
         f"Financement — {g.TITRE_SITE}",
-        "Coût brut, coût net, contribution de solidarité et fiche de paie à trois "
-        "niveaux : comment le revenu universel est financé, et pourquoi la progressivité "
-        "survit à un impôt proportionnel.",
+        f"Le coût net du revenu universel : {md(b.net)} une fois les "
+        f"prestations absorbées, soit une contribution de {pourcent(b.taux)} "
+        f"et un point de bascule à {eur(b.bascule_mensuelle)} par mois.",
         "Financement",
-        "Le coût brut n'est pas<br>le coût de la réforme",
-        "264 milliards d'euros de coût brut, et un coût net qui dépend de ce que le socle "
-        "remplace, de ce que la contribution reprend et de ce que l'activité rapporte.",
-        [("net", "Coût brut, coût net", net),
+        "Le coût net, et<br>ce qu'il suppose",
+        f"{md(b.brut)} de coût brut, {md(b.net)} de coût net, "
+        f"{pourcent(b.taux)} de contribution et un point de bascule à "
+        f"{eur(b.bascule_mensuelle)} par mois. Le calcul est ci-dessous, "
+        "ligne à ligne.",
+        [("net", "Du coût brut au coût net", net),
+         ("taux", "Le taux, et le point de bascule", taux),
+         ("arbitrage", "Ce que coûte chaque niveau de socle", arbitrage),
+         ("trous", "Les trois montants qui manquent", trous),
+         ("exclus", "Ce que ce bouclage refuse de compter", exclus),
          ("contribution", "La contribution de solidarité", contribution),
          ("progressivite", "Une progressivité sans barème", progressivite)],
         tete=reperes)
@@ -1338,7 +1785,17 @@ def questions():
               "transitoire : temporaire, ciblé, décroissant, non renouvelable, concentré "
               "sur les deux ou trois premières années, avec une règle explicite — aucune "
               "perte brutale de revenu disponible pendant la bascule.",
-              g.source("Note de doctrine, §7."), identifiant="q-perdants"),
+              "<p>Il faut être clair sur ce que ce bouclier fait et ne fait pas : "
+              "il <strong>amortit</strong> la bascule, il ne la supprime pas. "
+              "Au terme des deux ou trois ans, la perte est réelle pour qui "
+              "touche aujourd'hui plus que le socle. La seule façon de la "
+              "supprimer est de porter le socle à "
+              f"{eur(ch.SOCLE_NEUTRALITE)}, et la contribution à "
+              f"{pourcent(ch.boucler(ch.SOCLE_NEUTRALITE).taux)}. "
+              '<a href="cas-types.html">Voir qui perd, et de combien</a></p>',
+              g.source("Note de doctrine, §7 ; le chiffrage de la perte est "
+                       "propre à ce site."),
+              identifiant="q-perdants"),
         g.cle("Est-ce que mes APL disparaissent vraiment ?",
               "Oui, pour la majorité des bénéficiaires, étudiants compris : elles sont "
               "absorbées dans le socle, versé en argent libre d'usage. Les familles "
@@ -1367,13 +1824,27 @@ def questions():
               "du séjour, le décès et les doublons.",
               g.source("Note de doctrine, §17."), identifiant="q-expatries"),
         g.cle("Ça coûte 264 milliards : comment est-ce finançable ?",
-              "264 milliards est le coût <em>brut</em>, qui ne doit jamais être confondu "
-              "avec le coût de la réforme. Il faut en retirer les prestations absorbées, "
-              "les recettes de la contribution de solidarité, les effets de retour sur "
-              "l'activité et les économies administratives. Le risque de sous-estimation "
-              "est reconnu, et c'est pourquoi la première marche est fixée plus bas que "
-              "la cible.",
-              g.source("Note de doctrine, §18 et §20.1."), identifiant="q-cout"),
+              f"264 milliards est le coût <em>brut</em>. Le coût net est de "
+              f"{md(ch.boucler().net)} une fois déduites les prestations que le socle "
+              f"absorbe, et il suppose une contribution de solidarité de "
+              f"{pourcent(ch.taux_publie())} sur une assiette large. C'est un chiffre "
+              "lourd, et il vaut mieux l'écrire soi-même que se le faire écrire.",
+              '<p class="actions"><a class="bouton" href="financement.html#net">Voir '
+              "le bouclage, ligne à ligne</a></p>",
+              g.repere("Calculé à partir des dépenses constatées de chaque prestation "
+                       "absorbée. La note, elle, s'arrête au coût brut."),
+              identifiant="q-cout"),
+        g.cle("Qui y perd ?",
+              "Trois situations, et le site les chiffre plutôt que de les laisser "
+              "découvrir : le célibataire sans emploi aujourd'hui au RSA et à l'aide "
+              "au logement, la famille monoparentale modeste, et le retraité au "
+              "minimum vieillesse si le socle senior n'est pas calibré à son niveau. "
+              "Les deux dernières se ferment par une décision ; la première est "
+              "l'arbitrage central du programme.",
+              '<p class="actions"><a class="bouton" href="cas-types.html">Voir les '
+              "sept situations</a></p>",
+              g.repere("Sept cas types calculés aux barèmes 2026, perdants compris."),
+              identifiant="q-perdants-chiffres"),
     ])
 
     langage = (
@@ -1481,7 +1952,7 @@ def questions():
 
 # -- écriture ----------------------------------------------------------------
 
-PAGES = [accueil, socle, simulateur, jeunes, familles, protections,
+PAGES = [accueil, socle, simulateur, cas_types, jeunes, familles, protections,
          nouveaux_residents, financement, calendrier, questions]
 
 
