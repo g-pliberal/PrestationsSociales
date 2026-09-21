@@ -393,6 +393,10 @@ class CasType:
     lecture: str
     reserve: str = ""
     personnes: int = 1
+    #: Vide pour la métropole. Un cas type d'outre-mer se lit contre un barème
+    #: local, et il doit le dire : sans quoi on compare deux choses qui ne sont
+    #: pas comparables.
+    territoire: str = ""
 
     @property
     def avant(self) -> float:
@@ -504,6 +508,19 @@ def cas_types(socle: float = SOCLE_CIBLE, taux: float | None = None,
             "presque rien, parce qu'il raisonne par foyer.",
             "", personnes=4),
         CasType(
+            "À Mayotte, célibataire sans emploi",
+            "Au RSA mahorais, dont le barème est réduit de moitié.",
+            [("RSA de Mayotte", RSA_MAYOTTE)],
+            [("Socle adulte", socle)],
+            "Le gain le plus spectaculaire du programme, et il tient à une "
+            "seule chose : le socle est <strong>le même pour tous</strong>. "
+            "Un barème réduit de moitié ne survit pas à un droit universel — "
+            "c'est une conséquence de la doctrine, pas une faveur.",
+            "L'aide au logement n'est pas comptée : elle n'a pas à Mayotte la "
+            "forme qu'elle a ailleurs. Le coût de l'alignement est chiffré à "
+            "part.",
+            territoire="Mayotte"),
+        CasType(
             "Étudiant décohabitant, non boursier",
             "Logé seul, aide au logement pour toute ressource publique.",
             [("Aide au logement", APL_ETUDIANT)],
@@ -597,3 +614,182 @@ def baremes_du_calculateur() -> dict:
         "aplExtinction": APL_EXTINCTION_SMIC,
         "seuilPauvrete": SEUIL_PAUVRETE,
     }
+
+
+# -- 9. l'outre-mer ----------------------------------------------------------
+#
+# LA NOTE N'EN PARLE PAS. Vingt-deux sections, aucune mention des départements
+# et régions d'outre-mer ni des collectivités. C'est le silence le plus coûteux
+# du document : trois personnes sur dix y sont couvertes par les minima
+# sociaux, contre une sur dix en métropole, et un programme social muet sur ces
+# territoires sera lu comme un programme écrit contre eux.
+#
+# Il y a là deux questions distinctes, et les confondre serait une faute :
+#   - dans les DROM, le socle s'applique de plein droit, mais il y rencontre un
+#     niveau de pauvreté et un niveau de prix qui ne sont pas ceux de la
+#     métropole — et, à Mayotte, un barème du RSA réduit de moitié ;
+#   - dans plusieurs collectivités, la protection sociale est une compétence
+#     LOCALE, et le socle ne peut pas s'y appliquer par décision de Paris.
+
+RSA_MAYOTTE = 325.85   # € / mois, personne seule, 2026 — la moitié du barème
+
+
+@dataclass(frozen=True)
+class Territoire:
+    nom: str
+    population: int
+    pauvrete: float        # part sous le seuil de pauvreté national
+    ecart_prix: float      # niveau général des prix, écart avec la métropole
+    rsa: float             # montant forfaitaire applicable, personne seule
+    note: str = ""
+
+    @property
+    def aligne(self) -> bool:
+        """Le barème du RSA y est-il celui de la métropole."""
+        return abs(self.rsa - RSA_PERSONNE_SEULE) < 1
+
+
+#: Les cinq départements et régions d'outre-mer. Le socle s'y applique de plein
+#: droit : ils sont déjà dans l'hypothèse de population de la note (§4).
+DROM = [
+    Territoire("La Réunion", 885_174, 0.361, 0.07, RSA_PERSONNE_SEULE),
+    Territoire("Guadeloupe", 388_000, 0.345, 0.12, RSA_PERSONNE_SEULE),
+    Territoire("Martinique", 347_686, 0.268, 0.12, RSA_PERSONNE_SEULE),
+    Territoire("Guyane", 312_055, 0.53, 0.12, RSA_PERSONNE_SEULE),
+    Territoire("Mayotte", 320_000, 0.773, 0.07, RSA_MAYOTTE,
+               "Recensement en cours ; le barème du RSA y est réduit de moitié."),
+]
+
+#: Les collectivités où la protection sociale relève de la collectivité
+#: elle-même. Ce n'est pas une nuance administrative : c'est une limite de
+#: compétence, et le programme ne peut pas la franchir seul.
+COLLECTIVITES_AUTONOMES = [
+    ("Nouvelle-Calédonie", 268_000,
+     "Loi organique n° 99-209 du 19 mars 1999",
+     "La protection sociale est une compétence de la Nouvelle-Calédonie, qui a "
+     "son propre système."),
+    ("Polynésie française", 280_000,
+     "Loi organique n° 2004-192 du 27 février 2004",
+     "La Polynésie française est compétente et autonome en matière de "
+     "protection sociale."),
+]
+
+#: Le panier alimentaire métropolitain coûte de 37 % à 48 % de plus dans les
+#: DROM. C'est ce chiffre-là, et non l'écart du niveau général, qui décide de
+#: ce qu'un socle de 550 € permet d'acheter.
+ECART_PRIX_ALIMENTAIRE = (0.37, 0.48)
+
+#: Part de la population couverte par les minima sociaux, conjoints et enfants
+#: compris (DREES).
+COUVERTURE_MINIMA_DROM = 0.30
+COUVERTURE_MINIMA_METROPOLE = 0.10
+
+
+def population_drom() -> int:
+    return sum(territoire.population for territoire in DROM)
+
+
+def cout_alignement_mayotte(socle_mensuel: float = SOCLE_CIBLE) -> float:
+    """Ce que coûterait le socle plein à Mayotte, en Md€ bruts.
+
+    Ordre de grandeur, et il faut le dire comme tel : Mayotte est un
+    département très jeune — près de la moitié de sa population a moins de
+    18 ans — et la condition de séjour régulier y réduit l'assiette dans une
+    proportion que ce calcul ne connaît pas.
+    """
+    mayotte = next(t for t in DROM if t.nom == "Mayotte")
+    adultes = mayotte.population * 0.45
+    return socle_mensuel * 12 * adultes / MILLIARD
+
+
+# -- 10. l'indexation --------------------------------------------------------
+#
+# LA NOTE NE DIT PAS COMMENT LE SOCLE ÉVOLUE. Elle fixe une cible — 550 € — et
+# s'arrête là. Or un montant sans règle d'indexation n'est pas un droit : c'est
+# une ligne budgétaire qu'un arbitrage peut raboter chaque automne sans que
+# personne n'ait jamais voté sa baisse.
+#
+# Le précédent est connu : le point d'indice de la fonction publique n'a jamais
+# été indexé, et il a perdu près d'un quart de sa valeur en vingt ans, gel après
+# gel. Personne n'a voté cette baisse. Elle a simplement eu lieu.
+
+#: La règle actuelle des prestations sociales : revalorisation annuelle sur la
+#: moyenne des prix à la consommation hors tabac, avec un plancher qui interdit
+#: la baisse en cas de déflation.
+INDEXATION_ACTUELLE = "Art. L. 161-25 du code de la sécurité sociale"
+
+#: La croissance du niveau de vie médian, en euros constants : environ 0,8 %
+#: par an depuis 2014. C'est le rythme auquel le seuil de pauvreté s'éloigne
+#: d'un socle qui ne suivrait que les prix.
+CROISSANCE_NIVEAU_DE_VIE = 0.008
+
+HORIZONS = (0, 10, 20)
+
+
+@dataclass(frozen=True)
+class Indexation:
+    nom: str
+    croissance_reelle: float
+    description: str
+    defaut: str
+
+
+REGLES_INDEXATION = [
+    Indexation(
+        "Sur les prix", 0.0,
+        "La règle actuelle des minima sociaux. Le socle garde son pouvoir "
+        "d'achat, année après année.",
+        "Il décroche du niveau de vie, qui progresse plus vite que les prix. "
+        "Personne ne vote cette baisse : elle a lieu toute seule."),
+    Indexation(
+        "Sur le niveau de vie médian", CROISSANCE_NIVEAU_DE_VIE,
+        "Le socle garde sa position relative dans la société, et le seuil de "
+        "pauvreté cesse de s'en éloigner.",
+        "Le coût reste constant en part de l'assiette, donc la contribution ne "
+        "baisse jamais. C'est le prix de la promesse."),
+    Indexation(
+        "Sur les prix, plus la moitié de la croissance",
+        CROISSANCE_NIVEAU_DE_VIE / 2,
+        "Le compromis : le socle progresse, moins vite que la société, mais "
+        "sans décrocher.",
+        "Une règle composite est plus facile à contourner qu'une règle simple. "
+        "Elle demande donc une garantie écrite."),
+]
+
+
+@dataclass(frozen=True)
+class Projection:
+    annee: int
+    socle_reel: float       # € d'aujourd'hui
+    seuil_reel: float       # € d'aujourd'hui
+    part_du_seuil: float
+    taux: float
+
+
+def projeter(regle: Indexation, socle_mensuel: float = SOCLE_CIBLE,
+             horizons: tuple[int, ...] = HORIZONS) -> list[Projection]:
+    """Ce que devient le socle sous une règle donnée, en euros d'aujourd'hui.
+
+    Tout est exprimé en euros constants : l'inflation disparaît des deux côtés
+    et ne laisse voir que ce qui compte, l'écart entre le socle et le niveau de
+    vie du pays.
+
+    Le taux de contribution suit le rapport inverse : l'assiette progresse au
+    rythme de l'économie, le socle au rythme de sa règle. Un socle indexé sur
+    les seuls prix coûte donc un peu moins cher chaque année — ce qui est
+    exactement la même chose que dire qu'il donne un peu moins.
+    """
+    taux_initial = taux_publie(socle_mensuel)
+    projections = []
+    for annee in horizons:
+        croissance = (1 + regle.croissance_reelle) ** annee
+        reference = (1 + CROISSANCE_NIVEAU_DE_VIE) ** annee
+        socle = socle_mensuel * croissance
+        seuil = SEUIL_PAUVRETE * reference
+        projections.append(Projection(
+            annee=annee,
+            socle_reel=socle,
+            seuil_reel=seuil,
+            part_du_seuil=socle / seuil,
+            taux=taux_initial * croissance / reference))
+    return projections

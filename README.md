@@ -67,9 +67,9 @@ n'existe qu'une fois, dans `construire_site.py`.
 | Page | Ce qu'elle porte | Sections de la note |
 | --- | --- | --- |
 | `index.html` | Le diagnostic, la règle, les trois étages, les dix principes | §1, §2, §3, §22 |
-| `revenu-universel.html` | Le socle adulte : montant, individualisation, travail gagnant, prestations absorbées | §4, §5, §6, §12, §17 |
+| `revenu-universel.html` | Le socle adulte : montant, individualisation, travail gagnant, prestations absorbées, **l'outre-mer** et **la règle d'indexation** | §4, §5, §6, §12, §17 + chiffrage et droit |
 | `simulateur.html` | Le calculateur d'illustration, et la comparaison au système actuel | §5, §18 |
-| `cas-types.html` | Sept situations chiffrées, avant et après, **perdants compris** | chiffrage |
+| `cas-types.html` | Huit situations chiffrées, avant et après, **perdants compris**, Mayotte incluse | chiffrage |
 | `jeunes.html` | Le socle dès 18 ans, les APL étudiantes, les bourses | §6, §13, §20.3 |
 | `familles.html` | Le crédit familial, le bouclier monoparental, le couple | §7, §8, §9, §11 |
 | `protections.html` | Handicap, logement, chômage, retraites : ce qui reste à part | §10, §12, §14, §15 |

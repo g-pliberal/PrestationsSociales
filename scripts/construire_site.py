@@ -70,6 +70,20 @@ def ancre(texte: str) -> str:
     return "-".join(mots[:5])
 
 
+#: Les nombres que le site écrit en toutes lettres. Ils sont ici parce que le
+#: titre de la page des cas types en porte un : « Sept situations » écrit à la
+#: main devenait faux le jour où l'on ajoutait un cas, et personne ne l'aurait
+#: vu — c'est exactement la dérive que ce dépôt refuse ailleurs.
+LETTRES = ["zéro", "une", "deux", "trois", "quatre", "cinq", "six", "sept",
+           "huit", "neuf", "dix", "onze", "douze"]
+
+
+def en_lettres(nombre: int, majuscule: bool = False) -> str:
+    """Un petit nombre, écrit. Au-delà de douze, le chiffre fait l'affaire."""
+    mot = LETTRES[nombre] if nombre < len(LETTRES) else str(nombre)
+    return mot.capitalize() if majuscule else mot
+
+
 def ecart_monoparental(forfait: float) -> str:
     """Ce qu'un niveau de forfait enfant fait au cas type monoparental."""
     cas = ch.cas_types(forfait=forfait)[1]
@@ -500,12 +514,170 @@ def socle():
                    "résidents</a>.")
     )
 
+    outremer = (
+        "<p>La note ne mentionne l'outre-mer dans aucune de ses vingt-deux "
+        "sections. C'est le silence le plus coûteux du document : <strong>trois "
+        "personnes sur dix y sont couvertes par les minima sociaux, contre une "
+        "sur dix en métropole</strong>, et un programme social muet sur ces "
+        "territoires sera lu comme un programme écrit contre eux.</p>"
+        + g.tableau(
+            ["Territoire", "Population", "Sous le seuil de pauvreté",
+             "Prix, écart avec la métropole", "RSA d'une personne seule"],
+            [[territoire.nom, f"{territoire.population:,}".replace(",", FINE),
+              f"{territoire.pauvrete * 100:.0f}{FINE}%",
+              f"+{territoire.ecart_prix * 100:.0f}{FINE}%",
+              eur(territoire.rsa) + ("" if territoire.aligne
+                                     else " <span class=\"badge\">réduit de "
+                                          "moitié</span>")]
+             for territoire in ch.DROM],
+            ["texte", "nombre", "nombre", "nombre", "nombre"],
+            "Les cinq départements et régions d'outre-mer")
+        + "<p>Le socle s'y applique de plein droit, et ces "
+        + f"{ch.population_drom():,}".replace(",", FINE)
+        + " habitants sont déjà compris dans l'hypothèse de population de la "
+        "note. Deux choses, en revanche, ne le sont pas.</p>"
+        + g.depliant(
+            "Mayotte — un barème réduit de moitié, que le socle supprime",
+            f"<p>Le RSA y vaut {eur(ch.RSA_MAYOTTE)} contre "
+            f"{eur(ch.RSA_PERSONNE_SEULE)} en métropole. Un droit universel ne "
+            "survit pas à un barème local réduit de moitié : c'est une "
+            "conséquence de la doctrine, pas une faveur — et c'est le gain le "
+            "plus spectaculaire de toute la réforme, dans le département le "
+            "plus pauvre de France, où plus des trois quarts de la population "
+            "vivent sous le seuil de pauvreté.</p>"
+            f"<p>L'alignement coûte de l'ordre de "
+            f"{md(ch.cout_alignement_mayotte())} bruts. C'est un ordre de "
+            "grandeur et il faut le dire comme tel : Mayotte est un "
+            "département très jeune, et la condition de séjour régulier y "
+            "réduit l'assiette dans une proportion que ce calcul ne connaît "
+            'pas. <a href="cas-types.html">Voir le cas type</a></p>',
+            "mayotte")
+        + g.depliant(
+            "Les collectivités qui sont compétentes chez elles",
+            "<p>Dans plusieurs collectivités, la protection sociale relève de "
+            "la collectivité elle-même. Ce n'est pas une nuance "
+            "administrative : <strong>le socle ne peut pas y être institué par "
+            "une décision de Paris.</strong></p>"
+            + g.tableau(
+                ["Collectivité", "Population", "Fondement", "Ce que ça implique"],
+                [[nom, f"{population:,}".replace(",", FINE), f"<em>{texte}</em>",
+                  consequence]
+                 for nom, population, texte, consequence
+                 in ch.COLLECTIVITES_AUTONOMES],
+                ["texte", "nombre", "texte", "texte long"],
+                "Les collectivités compétentes en matière de protection sociale")
+            + "<p>La voie est donc conventionnelle, pas législative. Le dire "
+            "évite une promesse qui ne pourrait pas être tenue, et que ces "
+            "territoires entendraient comme une de plus.</p>",
+            "collectivites")
+        + g.droit("Loi organique n° 99-209 du 19 mars 1999 pour la "
+                  "Nouvelle-Calédonie ; loi organique n° 2004-192 du 27 février "
+                  "2004 pour la Polynésie française.")
+    )
+
+    prix = (
+        "<p>Reste la question que personne ne posera poliment : un socle de "
+        f"{eur(ch.SOCLE_CIBLE)} achète-t-il la même chose à Fort-de-France "
+        "qu'à Limoges ? Non. Le niveau général des prix y est supérieur de 7 à "
+        "12 %, et le panier alimentaire métropolitain y coûte de "
+        f"<strong>{ch.ECART_PRIX_ALIMENTAIRE[0] * 100:.0f} à "
+        f"{ch.ECART_PRIX_ALIMENTAIRE[1] * 100:.0f} % de plus</strong>.</p>"
+        + g.points([
+            ("Un montant unique",
+             "C'est la position cohérente avec la doctrine, et elle se défend : "
+             "moduler le socle sur les prix locaux obligerait à le moduler "
+             "aussi en métropole — entre Paris et la Creuse, l'écart de coût "
+             "du logement est plus grand qu'entre la métropole et les Antilles "
+             "— et cette pente n'a pas de fin. Un socle qui varie par "
+             "territoire n'est plus un socle : c'est un barème, et le barème "
+             "est précisément ce que la réforme supprime."),
+            ("Le vrai levier est ailleurs",
+             "Si les prix sont le problème, c'est la politique des prix et de "
+             "la concurrence qui doit le traiter, pas la prestation. Le socle "
+             "ne peut pas compenser indéfiniment un marché fermé ; le dire "
+             "clairement vaut mieux que de le laisser croire."),
+            ("Ce qu'il faut assumer",
+             "Cette réponse est tenable, mais elle ne tient que si elle est "
+             "dite d'avance, et si le chapitre outre-mer du programme porte "
+             "effectivement une politique des prix. Sinon, c'est une esquive, "
+             "et elle sera entendue comme telle."),
+        ])
+        + g.repere("Insee, comparaison spatiale des niveaux de prix entre "
+                   "territoires français ; taux de pauvreté au seuil national, "
+                   "Insee. Couverture par les minima sociaux : Drees.")
+    )
+
+    indexation = (
+        f"<p>La note fixe une cible — {eur(ch.SOCLE_CIBLE)} — et ne dit rien de "
+        "ce qu'elle devient ensuite. C'est une omission d'un autre ordre que "
+        "les précédentes : <strong>un montant sans règle d'indexation n'est pas "
+        "un droit, c'est une ligne budgétaire.</strong> Elle peut être rabotée "
+        "chaque automne sans que personne n'ait jamais voté sa baisse.</p>"
+        + g.note(
+            "<p>Le précédent est connu de tous ceux à qui il est arrivé. "
+            "L'indexation automatique du point d'indice de la fonction "
+            "publique a été supprimée en 1983. S'il avait suivi l'inflation "
+            "depuis 2000, il vaudrait aujourd'hui environ 6,50 € ; il en vaut "
+            "4,92 €. <strong>Aucune loi n'a décidé cette baisse</strong> : "
+            "elle a eu lieu, gel après gel, parce qu'aucune règle ne "
+            "l'empêchait.</p>", "vigilance")
+        + "<p>Voici ce que devient le socle selon la règle qu'on lui donne. "
+        "Tout est en euros d'aujourd'hui : l'inflation disparaît des deux "
+        "côtés, et il ne reste que l'écart entre le socle et le niveau de vie "
+        "du pays.</p>"
+        + g.tableau(
+            ["Règle d'indexation", "Le socle dans 20 ans",
+             "Part du seuil de pauvreté", "Contribution", "Le défaut"],
+            [[regle.nom,
+              eur(ch.projeter(regle)[-1].socle_reel),
+              f"{ch.projeter(regle)[-1].part_du_seuil * 100:.0f}{FINE}% "
+              f"<span class=\"discret\">contre "
+              f"{ch.projeter(regle)[0].part_du_seuil * 100:.0f}{FINE}% "
+              "aujourd'hui</span>",
+              pourcent(ch.projeter(regle)[-1].taux),
+              regle.defaut]
+             for regle in ch.REGLES_INDEXATION],
+            ["texte", "nombre", "nombre", "nombre", "texte long"],
+            "Ce que devient le socle en vingt ans, en euros d'aujourd'hui")
+        + "<p>La première ligne est la règle actuelle des minima sociaux, et "
+        "c'est celle qu'on appliquerait par défaut. Elle a un effet qu'il faut "
+        "voir en entier : le socle garde son pouvoir d'achat, mais le seuil de "
+        "pauvreté, lui, suit le niveau de vie médian — qui progresse d'environ "
+        "0,8 % par an en euros constants. <strong>Le socle ne baisse pas ; "
+        "c'est le pays qui s'en éloigne.</strong></p>"
+        + g.engagements([
+            (f"{ch.projeter(ch.REGLES_INDEXATION[0])[-1].part_du_seuil * 100:.0f}"
+             f"{FINE}%",
+             "Le socle dans vingt ans, indexé sur les prix",
+             f"Contre {ch.projeter(ch.REGLES_INDEXATION[0])[0].part_du_seuil * 100:.0f}"
+             f"{FINE}% du seuil de pauvreté aujourd'hui."),
+            (pourcent(ch.projeter(ch.REGLES_INDEXATION[0])[-1].taux),
+             "La contribution, au même horizon",
+             f"Contre {pourcent(ch.taux_publie())} au départ : la réforme coûte "
+             "un peu moins chaque année, ce qui est la même chose que dire "
+             "qu'elle donne un peu moins."),
+        ])
+        + g.note(
+            "<p>D'où une recommandation qui ne coûte rien à écrire et beaucoup "
+            "à omettre : <strong>fixer la règle dans le texte qui crée le "
+            "socle, et lui adjoindre un plancher exprimé en part du seuil de "
+            "pauvreté.</strong> Une règle d'indexation se contourne par un "
+            "amendement de fin d'automne ; un plancher relatif oblige à dire "
+            "tout haut qu'on abaisse le socle. C'est la seule protection qui "
+            "ait jamais fonctionné.</p>")
+        + g.repere("Règle actuelle : art. L. 161-25 du code de la sécurité "
+                   "sociale — moyenne annuelle des prix hors tabac, sans baisse "
+                   "possible. Croissance du niveau de vie médian : environ "
+                   "0,8 % par an en euros constants depuis 2014, Insee.")
+    )
+
     return page(
         "revenu-universel.html",
         f"Le socle — {g.TITRE_SITE}",
         "Le revenu universel adulte : 550 € par mois, individuel, dès 18 ans, "
         "conservé intégralement quand on travaille, en remplacement du RSA, de la prime "
-        "d'activité et des aides au logement.",
+        "d'activité et des aides au logement — avec ce qu'il devient outre-mer et ce "
+        "qu'il devient dans vingt ans.",
         "Le socle",
         "Un revenu, une règle,<br>aucune condition de ressources",
         "Le revenu universel adulte est versé à chaque adulte qui vit en France. Il ne "
@@ -515,7 +687,10 @@ def socle():
          ("montant", "Combien, et combien ça coûte", montant),
          ("travail", "Pourquoi le travail devient toujours gagnant", travail),
          ("remplace", "Ce que le socle remplace", remplace),
-         ("residence", "Qui y a droit", residence)],
+         ("residence", "Qui y a droit", residence),
+         ("outremer", "L'outre-mer", outremer),
+         ("prix", "Un montant unique, des prix différents", prix),
+         ("indexation", "Ce que le socle devient dans vingt ans", indexation)],
         tete=reperes)
 
 
@@ -697,7 +872,8 @@ def simulateur():
 # LA RÈGLE DE CETTE PAGE EST D'AFFICHER LES PERDANTS D'ABORD. Un jeu de
 # cas-types qui ne montre que des gagnants ne tient pas le premier
 # contre-exemple venu ; un jeu qui nomme ses perdants et dit ce qu'il propose
-# pour eux est le seul dont on garde la main. Trois des sept perdent.
+# pour eux est le seul dont on garde la main. Trois des huit perdent, et
+# le décompte du titre est calculé, jamais écrit à la main.
 
 def _cas_type(cas) -> str:
     """Une situation, en une carte : le détail, les deux régimes, l'écart.
@@ -732,7 +908,11 @@ def _cas_type(cas) -> str:
         + (g.note(f"<p><strong>Réserve.</strong> {cas.reserve}</p>")
            if cas.reserve else "")
     )
-    return g.cle(cas.nom, cas.detail, corps,
+    detail_complet = (
+        f"{cas.detail} Les montants d'aujourd'hui sont ceux du barème "
+        f"applicable à {cas.territoire}, qui n'est pas celui de la métropole."
+        if cas.territoire else cas.detail)
+    return g.cle(cas.nom, detail_complet, corps,
                  identifiant="cas-" + ancre(cas.nom))
 
 
@@ -787,10 +967,10 @@ def cas_types():
     )
 
     ceux_qui_perdent = (
-        "<p>Les trois situations ci-dessous perdent avec la calibration que la "
-        "note retient. Deux d'entre elles se ferment par une décision qui ne "
-        "coûte presque rien ; la troisième est l'arbitrage central du "
-        "programme.</p>"
+        f"<p>Les {en_lettres(len(perdants))} situations ci-dessous perdent avec "
+        "la calibration que la note retient. Deux d'entre elles se ferment par "
+        "une décision qui ne coûte presque rien ; la troisième est l'arbitrage "
+        "central du programme.</p>"
         + "".join(_cas_type(c) for c in perdants)
         + g.note(
             "<p><strong>Ce que ces trois cas ont en commun : ils n'ont pas de "
@@ -806,15 +986,16 @@ def cas_types():
     )
 
     ceux_qui_gagnent = (
-        "<p>Les quatre autres situations gagnent ou sont à peu près neutres. "
-        "Les deux dernières sont les meilleurs arguments du programme, et le "
-        "site ne les chiffrait nulle part.</p>"
+        f"<p>Les {en_lettres(len(autres))} autres situations gagnent ou sont à "
+        "peu près neutres. Les dernières sont les meilleurs arguments du "
+        "programme, et le site ne les chiffrait nulle part.</p>"
         + "".join(_cas_type(c) for c in autres)
     )
 
     profil = (
-        "<p>Mis bout à bout, les sept cas dessinent un profil, et il vaut mieux "
-        "le connaître avant qu'un institut ne le publie.</p>"
+        f"<p>Mis bout à bout, les {en_lettres(len(cas))} cas dessinent un "
+        "profil, et il vaut mieux le connaître avant qu'un institut ne le "
+        "publie.</p>"
         + g.points([
             ("Les grands gagnants sont au milieu",
              "Le couple bi-actif est le plus gros gain de la série, parce que "
@@ -837,7 +1018,8 @@ def cas_types():
         ])
         + g.note(
             f"<p>{ch.contrainte_structurelle()}</p>", "vigilance")
-        + g.repere("Écarts calculés à partir des sept situations ci-dessus, "
+        + g.repere(f"Écarts calculés à partir des {en_lettres(len(cas))} "
+                   "situations ci-dessus, "
                    f"pour un socle de {eur(ch.SOCLE_CIBLE)} et une contribution "
                    f"de {pourcent(b.taux)}.")
     )
@@ -845,12 +1027,13 @@ def cas_types():
     return page(
         "cas-types.html",
         f"Cas types — {g.TITRE_SITE}",
-        "Sept situations chiffrées aux barèmes 2026, avant et après la "
-        "réforme, perdants compris : célibataire au RSA, famille "
-        "monoparentale, minimum vieillesse, AAH, SMIC, couple bi-actif, "
-        "étudiant.",
+        f"{en_lettres(len(cas), majuscule=True)} situations chiffrées aux "
+        "barèmes 2026, avant et après la réforme, perdants compris : "
+        "célibataire au RSA, famille monoparentale, minimum vieillesse, AAH, "
+        "SMIC, couple bi-actif, Mayotte, étudiant.",
         "Cas types",
-        "Sept situations,<br>perdants compris",
+        f"{en_lettres(len(cas), majuscule=True)} situations,<br>perdants "
+        "compris",
         "Ce que chacun touche aujourd'hui, ce qu'il toucherait avec le socle, "
         "et l'écart. Les situations qui perdent sont en premier.",
         [("lecture", "Comment ces chiffres sont faits", lecture),
@@ -2245,6 +2428,38 @@ def questions():
               g.source("Note de doctrine, §16 ; le périmètre de droit est propre "
                        "à ce site."),
               identifiant="q-etrangers"),
+        g.cle("Et outre-mer ?",
+              "Le socle s'y applique de plein droit, au même montant. À Mayotte, où le "
+              "RSA vaut aujourd'hui la moitié du barème métropolitain, c'est le gain le "
+              "plus important de toute la réforme. En Nouvelle-Calédonie et en "
+              "Polynésie française, en revanche, la protection sociale est une "
+              "compétence de la collectivité : le socle ne peut pas y être institué "
+              "depuis Paris.",
+              "<p>Le montant est le même partout, et ce choix s'assume : le "
+              "moduler sur les prix locaux obligerait à le faire aussi entre "
+              "Paris et la Creuse, et cette pente n'a pas de fin. Mais les prix "
+              "sont réellement plus élevés outre-mer, et c'est la politique des "
+              "prix qui doit y répondre, pas la prestation. "
+              '<a href="revenu-universel.html#outremer">Voir le détail</a></p>',
+              g.repere("Barèmes et taux de pauvreté par territoire, Insee et "
+                       "Drees ; la note, elle, ne mentionne pas l'outre-mer."),
+              identifiant="q-outremer"),
+        g.cle("Qu'est-ce qui empêche le socle de fondre avec le temps ?",
+              "Rien, tant que sa règle d'indexation n'est pas écrite — et la note ne "
+              "l'écrit pas. Indexé sur les seuls prix, comme le sont les minima sociaux "
+              "aujourd'hui, le socle garde son pouvoir d'achat mais décroche du niveau "
+              "de vie : il passe de 41 % à 35 % du seuil de pauvreté en vingt ans, sans "
+              "que personne n'ait voté cette baisse.",
+              "<p>C'est ce qui est arrivé au point d'indice de la fonction "
+              "publique, qui n'a jamais eu de règle. La parade tient en une "
+              "ligne : inscrire l'indexation dans le texte qui crée le socle, "
+              "et lui adjoindre un plancher exprimé en part du seuil de "
+              "pauvreté. "
+              '<a href="revenu-universel.html#indexation">Voir les trois règles '
+              "possibles</a></p>",
+              g.repere("Projection en euros constants, sur la croissance "
+                       "observée du niveau de vie médian."),
+              identifiant="q-indexation"),
         g.cle("Est-ce que ça crée un fichier de toute la population ?",
               "Non, et ce serait contraire à ce que la réforme cherche. Le socle "
               "s'appuie sur les répertoires qui existent déjà — celui de l'Insee pour "
@@ -2285,7 +2500,7 @@ def questions():
               "Les deux dernières se ferment par une décision ; la première est "
               "l'arbitrage central du programme.",
               '<p class="actions"><a class="bouton" href="cas-types.html">Voir les '
-              "sept situations</a></p>",
+              f"{en_lettres(len(ch.cas_types()))} situations</a></p>",
               g.repere("Sept cas types calculés aux barèmes 2026, perdants compris."),
               identifiant="q-perdants-chiffres"),
     ])
