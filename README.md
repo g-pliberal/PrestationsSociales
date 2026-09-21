@@ -73,7 +73,7 @@ n'existe qu'une fois, dans `construire_site.py`.
 | `jeunes.html` | Le socle dès 18 ans, les APL étudiantes, les bourses | §6, §13, §20.3 |
 | `familles.html` | Le crédit familial, le bouclier monoparental, le couple | §7, §8, §9, §11 |
 | `protections.html` | Handicap, logement, chômage, retraites : ce qui reste à part | §10, §12, §14, §15 |
-| `nouveaux-residents.html` | La convergence, **les sept publics auxquels le droit interdit de l'appliquer**, la jurisprudence, le périmètre réel | §16, §17, §20.5 + droit applicable |
+| `nouveaux-residents.html` | La convergence, **les sept publics auxquels le droit interdit de l'appliquer**, la jurisprudence, le périmètre réel, et **un contrôle sans fichier nouveau** | §16, §17, §20.5 + droit applicable |
 | `financement.html` | Coût brut, **coût net**, taux de contribution, point de bascule, les trois montants qui manquent | §18, §20.1 + chiffrage |
 | `calendrier.html` | Les cinq années de bascule et les six points de vigilance | §19, §20 |
 | `questions.html` | Dix objections, le message politique, le glossaire | §21, §22 |

@@ -1334,6 +1334,49 @@ JURISPRUDENCE = [
 ]
 
 
+#: Les référentiels qui existent DÉJÀ, et ce que chacun règle de la liste du
+#: §17. Le tableau n'est pas là pour faire savant : il est là pour montrer que
+#: chaque ligne de cette liste a son outil, et qu'aucune n'en appelle un neuf.
+REPERTOIRES = [
+    ("RNIPP — répertoire national d'identification des personnes physiques",
+     "Insee",
+     "L'état civil de toute personne née en France, et les décès. C'est la "
+     "source du numéro de sécurité sociale.",
+     "Identité, décès"),
+    ("SNGI — système national de gestion des identifiants, alimenté par le "
+     "Sandia",
+     "Cnav",
+     "Le référentiel d'identité de la sphère sociale, depuis 1988. Il reçoit le "
+     "RNIPP pour les personnes nées en France, et le Sandia — qui vérifie les "
+     "pièces d'état civil — pour celles nées à l'étranger. C'est lui qui "
+     "certifie le numéro.",
+     "Identité, unicité, usurpation"),
+    ("RNCPS — répertoire national commun de la protection sociale",
+     "90 organismes nationaux, 1 000 organismes gestionnaires",
+     "Le répertoire commun de la protection sociale, créé en 2008 et déployé "
+     "depuis 2012 : les affiliations de chacun, les prestations qu'il perçoit "
+     "et leurs montants.",
+     "Doublons, unicité du bénéficiaire, cumuls"),
+    ("DRM — dispositif de ressources mensuelles",
+     "Sphère sociale, depuis 2021",
+     "L'agrégat mensuel de la déclaration sociale nominative et des revenus de "
+     "remplacement. Il porte les données de <strong>50 millions de "
+     "personnes</strong>, déclarées par deux millions d'établissements et cinq "
+     "mille organismes — tous les mois.",
+     "Activité, ressources, signal de présence"),
+    ("AGDREF — gestion des dossiers des ressortissants étrangers en France",
+     "Ministère de l'intérieur",
+     "Les titres de séjour.",
+     "Régularité du séjour"),
+    ("Condition de résidence de la protection maladie",
+     "Caisses, art. R. 111-2 du code de la sécurité sociale",
+     "« Foyer ou lieu de séjour principal » en France : six mois par an, après "
+     "trois mois de présence. Le critère est écrit, il est jugé, et les caisses "
+     "l'appliquent tous les jours.",
+     "Résidence effective"),
+]
+
+
 def nouveaux_residents():
     principe = (
         "<p>Le revenu universel est un droit attaché à l'appartenance stable à la "
@@ -1588,18 +1631,114 @@ def nouveaux_residents():
         + g.source("Note de doctrine, §17 — Résidence effective, fraude et contrôle.")
     )
 
+    repertoires = (
+        "<p>Le calendrier de la note prévoit, dès la première année, la "
+        "« préparation du registre de résidence effective » (§19). Ces quatre "
+        "mots méritent d'être précisés avant que quelqu'un d'autre ne s'en "
+        "charge, parce qu'ils se lisent aujourd'hui comme la création d'un "
+        "<strong>fichier national de la population entière</strong> — et que ce "
+        "n'est ni nécessaire, ni constitutionnellement sûr, ni conforme à ce que "
+        "ce programme dit vouloir.</p>"
+        + g.encadre('<p class="chapeau" style="margin:0">Le socle ne crée aucun '
+                    "répertoire nouveau. Il s'appuie sur ceux qui existent, et "
+                    "sur une condition de résidence qui est déjà écrite dans le "
+                    "code de la sécurité sociale.</p>")
+        + "<p>Chaque ligne de la liste ci-dessus a déjà son outil, et ces outils "
+        "fonctionnent :</p>"
+        + g.tableau(
+            ["Outil", "Qui le tient", "Ce qu'il fait", "Ce qu'il règle"],
+            [[outil, f"<em>{tenu}</em>", fait, regle]
+             for outil, tenu, fait, regle in REPERTOIRES],
+            ["texte", "texte", "texte long", "texte"],
+            "Les référentiels existants, et ce que chacun règle")
+        + "<p>Ce que la réforme doit demander n'est donc pas un fichier : c'est "
+        "une <strong>autorisation d'usage</strong> — un décret en Conseil d'État "
+        "pris après avis de la CNIL — et, le cas échéant, une extension du champ "
+        "du répertoire commun. C'est un travail juridique ordinaire, pas un "
+        "projet informatique d'État.</p>"
+        + "<p>Un registre neuf ne se heurterait d'ailleurs pas seulement à une "
+        "objection politique. Il se heurterait à une décision déjà rendue.</p>"
+        + g.depliant(
+            "Conseil constitutionnel, 2012-652 DC, 22 mars 2012",
+            "<p>La loi relative à la protection de l'identité créait un fichier "
+            "central réunissant l'état civil, le domicile, la taille, la "
+            "couleur des yeux, deux empreintes et la photographie de tous les "
+            "Français. Le Conseil l'a censuré comme contraire au droit au "
+            "respect de la vie privée, pour trois motifs :</p>"
+            + g.gestes([
+                "<strong>l'ampleur</strong> — tous les Français y figuraient ;",
+                "<strong>la portée</strong> — il était consultable à d'autres "
+                "fins que celle qui le justifiait ;",
+                "<strong>la nécessité</strong> — constituer un tel fichier "
+                "n'était pas nécessaire, dès lors que d'autres techniques "
+                "permettaient d'atteindre le même but.",
+            ])
+            + g.note(
+                "<p><strong>Pour nous.</strong> Les trois motifs s'appliquent "
+                "mot pour mot à un registre de résidence de toute la "
+                "population. Le troisième est le plus dangereux, parce que les "
+                "« autres techniques » ne sont pas hypothétiques ici : elles "
+                "tournent déjà, tous les mois, pour cinquante millions de "
+                "personnes.</p>"),
+            identifiant="jp-fichier-central")
+        + g.note(
+            "<p>Un parti qui propose « moins de guichets, moins de seuils, plus "
+            "de liberté » et se donne pour objet un État social « moins "
+            "intrusif » ne peut pas ouvrir sa réforme par la création d'un "
+            "fichier national. Ce serait la première contradiction que l'on "
+            "nous opposerait, et elle serait fondée.</p>", "vigilance")
+        + g.droit("Décision n° 2012-652 DC du 22 mars 2012, loi relative à la "
+                  "protection de l'identité ; art. L. 114-12-1 du code de la "
+                  "sécurité sociale pour le répertoire commun ; art. R. 111-2 "
+                  "du même code pour la condition de résidence.")
+    )
+
+    moins = (
+        "<p>Reste le point que le programme ne fait valoir nulle part, et qui "
+        "est pourtant l'un de ses meilleurs : <strong>un socle universel a "
+        "besoin de beaucoup moins de données personnelles qu'une prestation "
+        "sous condition de ressources.</strong></p>"
+        + g.tableau(
+            ["Ce que l'administration doit savoir", "Aujourd'hui", "Avec le socle"],
+            [["Vos ressources, tous les trimestres", "Oui", "Non"],
+             ["Votre loyer, votre bail, votre zone", "Oui", "Non"],
+             ["La composition de votre foyer", "Oui", "Non"],
+             ["Votre situation conjugale", "Oui", "Non"],
+             ["Les ressources de votre conjoint", "Oui", "Non"],
+             ["Que vous êtes vivant, unique et résident", "Oui", "Oui"]],
+            ["texte long", "texte", "texte"],
+            "Ce que chaque système exige de savoir sur vous")
+        + "<p>C'est la traduction concrète de ce que dit le §17 — le contrôle "
+        "« change de nature ». Il ne s'agit pas d'ajouter une surveillance de la "
+        "résidence à celle des ressources : il s'agit de <strong>supprimer la "
+        "seconde</strong>, et de ne garder que la première, qui existe déjà. "
+        "L'individualisation du socle y ajoute un effet que la note relève au "
+        "§11 sans l'exploiter : en cessant de dépendre du foyer, le droit cesse "
+        "d'obliger l'administration à enquêter sur la vie privée et familiale de "
+        "qui le demande.</p>"
+        + g.note(
+            "<p>Formulée ainsi, la mesure se défend d'elle-même : "
+            "<strong>l'État social cesse de vous demander avec qui vous vivez, "
+            "ce que vous gagnez et combien vous payez de loyer. Il vérifie que "
+            "vous existez, une seule fois, et que vous vivez ici.</strong> "
+            "C'est moins de contrôle, pas plus.</p>")
+        + g.source("Note de doctrine, §11 — solidarités privées et intrusion "
+                   "administrative ; §17 — le contrôle change de nature.")
+    )
+
     return page(
         "nouveaux-residents.html",
         f"Nouveaux résidents — {g.TITRE_SITE}",
         "Droits et devoirs progressifs : le barème de convergence, les sept publics "
         "auxquels le droit européen et international interdit de l'appliquer, la "
-        "jurisprudence constitutionnelle, et le périmètre réel qui en résulte.",
+        "jurisprudence, le périmètre réel — et un contrôle qui s'appuie sur les "
+        "répertoires existants plutôt que sur un fichier nouveau.",
         "Nouveaux résidents",
         "Les droits et les devoirs<br>avancent ensemble",
-        "Un socle immédiat et entier pour les citoyens français résidant en France ; pour "
-        "les résidents étrangers, une convergence où l'accès aux droits et la "
-        "contribution montent du même pas — et le périmètre exact que le droit laisse à "
-        "cette convergence.",
+        "Un socle immédiat et entier pour les citoyens français résidant en France ; "
+        "pour les résidents étrangers, une convergence où l'accès aux droits et la "
+        "contribution montent du même pas — et le périmètre exact que le droit laisse "
+        "à cette convergence.",
         [("principe", "Le principe", principe),
          ("bareme", "Le barème de convergence", bareme),
          ("exceptions", "À qui le barème ne peut pas s'appliquer", exceptions),
@@ -1607,7 +1746,9 @@ def nouveaux_residents():
          ("portee", "Le périmètre réel, et ce qu'il faut en faire", portee),
          ("compte", "Le compte individuel de solidarité", compte),
          ("hors", "Ce qui reste hors du barème", hors),
-         ("controle", "Résidence effective et contrôle", controle)])
+         ("controle", "Résidence effective et contrôle", controle),
+         ("repertoires", "Sans fichier nouveau", repertoires),
+         ("moins", "Un socle demande moins de données", moins)])
 
 
 # -- 8. le financement -------------------------------------------------------
@@ -1992,6 +2133,18 @@ def calendrier():
                  "situations exceptionnelles prévues explicitement : il ne doit pas "
                  "devenir une nouvelle prestation permanente.</p>", "vigilance")
         + g.source("Note de doctrine, §19 — Mise en œuvre.")
+        + g.note(
+            "<p>Une ligne de l'année 1 demande à être lue correctement : la "
+            "« préparation du registre de résidence effective » <strong>n'est "
+            "pas la création d'un fichier national</strong>. L'identité, "
+            "l'unicité, la résidence, le séjour et le décès ont déjà chacun "
+            "leur référentiel, et ils fonctionnent. Ce que cette étape prépare, "
+            "c'est l'autorisation d'y recourir — un décret en Conseil d'État "
+            "après avis de la CNIL —, pas un répertoire de plus. "
+            '<a href="nouveaux-residents.html#repertoires">Voir les outils qui '
+            "existent</a></p>", "vigilance")
+        + g.droit("Le calendrier est celui de la note (§19) ; la lecture de "
+                  "cette étape est propre à ce site.")
     )
 
     risques = (
@@ -2092,6 +2245,21 @@ def questions():
               g.source("Note de doctrine, §16 ; le périmètre de droit est propre "
                        "à ce site."),
               identifiant="q-etrangers"),
+        g.cle("Est-ce que ça crée un fichier de toute la population ?",
+              "Non, et ce serait contraire à ce que la réforme cherche. Le socle "
+              "s'appuie sur les répertoires qui existent déjà — celui de l'Insee pour "
+              "l'état civil, celui de la Cnav pour l'identité, le répertoire commun de "
+              "la protection sociale pour les doublons — et sur la condition de "
+              "résidence que le code de la sécurité sociale écrit depuis longtemps.",
+              "<p>Le point important est ailleurs : <strong>un socle universel a "
+              "besoin de moins de données qu'une prestation sous condition de "
+              "ressources.</strong> L'administration cesse de demander ce que "
+              "vous gagnez, ce que vous payez de loyer, avec qui vous vivez et "
+              "ce que gagne votre conjoint. Elle vérifie que vous existez et que "
+              "vous vivez ici. C'est moins de contrôle, pas plus. "
+              '<a href="nouveaux-residents.html#moins">Voir le détail</a></p>',
+              g.source("Note de doctrine, §11 et §17."),
+              identifiant="q-fichier"),
         g.cle("Un Français installé à l'étranger le touche-t-il ?",
               "Non : la nationalité seule ne suffit pas. Le socle est attaché à la "
               "résidence effective en France, et c'est l'un des critères que le contrôle "
