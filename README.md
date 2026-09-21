@@ -11,7 +11,7 @@ rien à construire pour le servir : `index.html` à la racine suffit.
 
 ## La source
 
-Tout le contenu est tiré de l'unique document du dépôt,
+Le programme est tiré de l'unique document du dépôt,
 [`documents/note-revenu-universel.pdf`](documents/note-revenu-universel.pdf) —
 la note de doctrine « Revenu universel et refonte des prestations sociales »,
 22 sections. Le fichier est celui qui a été versé au dépôt, inchangé ; seul son
@@ -91,7 +91,7 @@ n'existe qu'une fois, dans `construire_site.py`.
 | `nouveaux-residents.html` | La convergence, **les sept publics auxquels le droit interdit de l'appliquer**, la jurisprudence, le périmètre réel, et **un contrôle sans fichier nouveau** | §16, §17, §20.5 + droit applicable |
 | `financement.html` | Coût brut, **coût net**, taux de contribution, point de bascule, **la contribution s'ajoute à l'impôt** et ce que ça coûte au sommet du barème | §18, §20.1 + chiffrage et droit |
 | `calendrier.html` | Les cinq années de bascule et les six points de vigilance | §19, §20 |
-| `questions.html` | Dix objections, le message politique, le glossaire | §21, §22 |
+| `questions.html` | 15 objections, le message politique, le glossaire | §21, §22 + chiffrage |
 
 ## L'apparence
 
@@ -131,8 +131,9 @@ python3 scripts/verifier.py          # pages, liens, ancres, barèmes, chiffrage
   **fermé** : une classe absente de `moteur/style.css` ne sera pas mise en page.
 - `scripts/construire_site.py` — le texte du programme, page par page. C'est le
   seul endroit où une phrase du site existe.
-- `scripts/chiffrage.py` — les barèmes 2026, le bouclage budgétaire et les sept
-  cas-types. Le seul endroit où un **nombre calculé** du site existe.
+- `scripts/chiffrage.py` — les barèmes 2026, le bouclage budgétaire, les 8
+  cas-types, l'outre-mer et les projections d'indexation. Le seul endroit où un
+  **nombre calculé** du site existe.
 - `scripts/verifier.py` — refuse une page qui a dérivé de son générateur, un
   lien interne cassé, une ancre absente, des barèmes qui ne sont plus ceux du
   module, une page qui chiffre sans le dire.
