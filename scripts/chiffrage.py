@@ -55,7 +55,11 @@ ALLOCATIONS_FAMILIALES_2 = 153.01  # € / mois, deux enfants, sous plafond
 #: lectures selon les cotisations retenues. Les cas-types prennent le bas : un
 #: résultat flatteur obtenu par le haut serait le seul qu'on ne puisse pas
 #: vérifier. C'est la règle déjà suivie par le calculateur pour la convergence.
-SMIC_NET = 1443.0                # € / mois, temps plein
+#: Le SMIC net mensuel à temps plein, depuis la revalorisation du 1ᵉʳ juin
+#: 2026 : 1 867,02 € bruts, 12,31 € de l'heure. Le chiffrage a d'abord retenu
+#: 1 443,11 €, qui était la valeur du 1ᵉʳ janvier — six mois de retard sur un
+#: barème qui bouge deux fois par an.
+SMIC_NET = 1477.93               # € / mois, temps plein
 PRIME_ACTIVITE_AU_SMIC = 230.0   # € / mois, personne seule, ordre de grandeur
 
 #: L'aide au logement varie tellement selon la zone et le loyer qu'un montant
@@ -169,7 +173,7 @@ SOCLE_MARCHE = 500               # € / mois, première marche (note, §20.1)
 #: SOCLE_CIBLE est de la doctrine, elle se cite « note, §4 » ; SOCLE_RETENU est
 #: une décision du parti, elle se cite comme telle. Les mélanger ferait passer
 #: un arbitrage pour une lecture.
-SOCLE_RETENU = 575
+SOCLE_RETENU = 580
 
 
 def cout_brut(socle_mensuel: float, personnes: int) -> float:
@@ -240,31 +244,58 @@ EXCLUS_DU_BOUCLAGE = [
      "erreur de raisonnement, et elle est corrigée ici."),
 ]
 
-#: L'assiette de la contribution, RECONSTRUITE PAR COMPOSANTS.
+#: L'assiette de la contribution. ELLE N'EST PLUS ESTIMÉE : elle est publiée.
 #:
-#: Une première version divisait le rendement total de la CSG par son taux sur
-#: les revenus d'activité — 157 / 9,2 % — et obtenait 1 707 Md€. C'était faux
-#: par construction : la CSG n'a pas un taux unique, et diviser par le plus
-#: élevé sous-estime l'assiette. L'erreur était de 3 %, soit un demi-point de
-#: contribution : du même ordre que toute l'enveloppe d'arbitrage.
+#: Deux versions de ce calcul se sont succédé avant celle-ci, et toutes deux
+#: étaient des approximations. La première divisait le rendement total de la
+#: CSG par son taux sur les revenus d'activité — ce qui suppose un taux unique
+#: que la CSG n'a pas. La seconde reconstruisait chaque composant à partir de
+#: son rendement et de son taux, ce qui était juste pour l'activité et le
+#: capital mais approché pour les revenus de remplacement, dont les taux sont
+#: étagés.
 #:
-#: Chaque composant est donc déduit de SON rendement et de SON taux.
-CSG_RENDEMENTS = {
-    "activité": (110.67, 0.092),
-    "capital": (17.59, 0.092),
-    #: Les revenus de remplacement portent des taux étagés — 8,3 % sur les
-    #: pensions, 6,2 % sur le chômage, 3,8 % pour les foyers modestes, zéro en
-    #: dessous d'un seuil. Le taux moyen retenu est intermédiaire et assumé
-    #: comme tel : c'est le seul composant approché des trois.
-    "remplacement": (28.26, 0.078),
+#: Le rapport à la Commission des comptes de la Sécurité sociale publie
+#: directement la grandeur cherchée, sous le nom de VALEUR DE POINT : pour
+#: chaque assiette, le rapport du rendement au taux facial, c'est-à-dire
+#: l'assiette au centième près. Il n'y a donc plus rien à estimer.
+#:
+#: En millions d'euros par point de CSG, exercice 2026 prévisionnel.
+CSG_VALEUR_DE_POINT = {
+    "activité": 11_710,
+    "remplacement": 4_020,
+    "capital": 1_940,
+    #: Les jeux sont écartés du calcul : leur assiette est la mise, pas un
+    #: revenu, et un socle financé par un prélèvement sur les revenus n'a pas à
+    #: s'y adosser. Le chiffre est conservé pour que l'écart avec le total
+    #: publié s'explique de lui-même.
+    "jeux": 100,
 }
 
-#: Les jeux sont écartés : leur assiette est la mise, pas un revenu, et un
-#: socle financé par un prélèvement sur les revenus n'a pas à s'y adosser.
-ASSIETTE_LARGE = sum(rendement / taux
-                     for rendement, taux in CSG_RENDEMENTS.values())
+#: L'exercice 2025 réalisé, pour mémoire : l'assiette d'activité y est plus
+#: large de 32 Md€, la réforme de l'assiette des travailleurs indépendants
+#: n'ayant pris effet qu'au 1ᵉʳ janvier 2026. Retenir 2026 est le choix
+#: prudent — une assiette plus étroite appelle un taux plus élevé.
+CSG_VALEUR_DE_POINT_2025 = {
+    "activité": 12_030, "remplacement": 3_900, "capital": 1_910, "jeux": 100,
+}
 
-CSG_RENDEMENT = sum(rendement for rendement, _ in CSG_RENDEMENTS.values())
+#: Les rendements correspondants, pour situer les ordres de grandeur.
+CSG_RENDEMENTS = {
+    "activité": 107.502,
+    "remplacement": 29.208,
+    "capital": 18.800,
+}
+
+
+def assiette(valeurs_de_point: dict[str, int] | None = None) -> float:
+    """L'assiette large, en Md€, jeux exclus."""
+    valeurs = valeurs_de_point or CSG_VALEUR_DE_POINT
+    return sum(valeur for nom, valeur in valeurs.items() if nom != "jeux") / 10
+
+
+ASSIETTE_LARGE = assiette()
+
+CSG_RENDEMENT = sum(CSG_RENDEMENTS.values())
 
 
 @dataclass(frozen=True)
@@ -467,15 +498,16 @@ FORFAIT_NEUTRE_BUDGET = round(
 #: main : c'est la part de l'enveloppe que l'arbitrage lui attribue. Le forfait
 #: d'équilibre — celui qui coûte exactement ce que le crédit familial remplace —
 #: reste calculé au-dessus, et sert de référence.
-FORFAIT_RETENU = 330
+FORFAIT_RETENU = 335
 
 #: Conservé sous son ancien nom pour les emplois qui veulent « le forfait que le
 #: site publie », et qui doivent suivre l'arbitrage.
 FORFAIT_ILLUSTRATION = FORFAIT_RETENU
 
-#: Les trois niveaux que le site met en regard : un forfait bas, le forfait
-#: d'équilibre, et celui qui protège les familles monoparentales.
-FORFAITS_COMPARES = (200, FORFAIT_NEUTRE_BUDGET, 500)
+#: Les niveaux que le site met en regard : un forfait bas, le forfait
+#: d'équilibre, celui qui est retenu, et celui qui protègerait entièrement les
+#: familles monoparentales — hors d'atteinte.
+FORFAITS_COMPARES = (200, FORFAIT_NEUTRE_BUDGET, FORFAIT_RETENU, 500)
 
 
 
@@ -1082,50 +1114,61 @@ def forfait_finance_par(marge_milliards: float,
 
 # -- 12. ce que le chiffrage ne sait pas, et de combien -----------------------
 #
-# UN CHIFFRAGE QUI NE DIT PAS SON INCERTITUDE N'EST PAS VÉRIFIABLE. Celui-ci
-# repose sur une assiette dont un composant est approché : les revenus de
-# remplacement portent des taux étagés — 8,3 % sur les pensions, 6,2 % sur le
-# chômage, 3,8 % pour les foyers modestes —, et le taux moyen retenu est un
-# choix. Les deux autres composants sont exacts : rendement publié divisé par
-# un taux unique.
+# UN CHIFFRAGE QUI NE DIT PAS SON INCERTITUDE N'EST PAS VÉRIFIABLE.
 #
-# La fourchette ci-dessous n'est donc pas une précaution de style. C'est elle
-# qui décide si la calibration retenue tient ou non, et elle donne un résultat
-# net : elle tient, et la calibration immédiatement supérieure ne tient pas.
+# Elle a changé de nature. Elle portait sur l'assiette, estimée à partir de
+# rendements et de taux ; l'assiette est désormais publiée, et cette
+# incertitude-là a disparu. Il en reste deux, plus petites et de nature
+# différente :
+#
+#   - LE MILLÉSIME DE L'ASSIETTE. La réforme de l'assiette sociale des
+#     travailleurs indépendants, entrée en vigueur au 1ᵉʳ janvier 2026, a
+#     rétréci la base de la CSG de 32 Md€ en la transférant vers les
+#     cotisations. Un nouveau prélèvement pourrait retenir l'une ou l'autre
+#     définition ; le chiffrage prend la plus étroite.
+#
+#   - LES PRESTATIONS ABSORBÉES. Leurs montants sont des dépenses constatées
+#     de 2024, et la part des aides au logement que le socle absorbe est une
+#     appréciation, non une mesure. On la fait varier de trois milliards dans
+#     les deux sens.
 
-REMPLACEMENT_TAUX_EXTREMES = (0.062, 0.083)   # chômage, pensions
+ABSORBEES_INCERTITUDE = 3.0   # Md€, de part et d'autre
 
 
 def assiette_fourchette() -> tuple[float, float]:
-    """L'assiette large, aux deux bornes du taux de remplacement."""
-    fixe = sum(rendement / taux
-               for nom, (rendement, taux) in CSG_RENDEMENTS.items()
-               if nom != "remplacement")
-    rendement, _ = CSG_RENDEMENTS["remplacement"]
-    hautes, basses = REMPLACEMENT_TAUX_EXTREMES
-    return (fixe + rendement / basses, fixe + rendement / hautes)
+    """L'assiette, entre le millésime 2026 et le millésime 2025."""
+    return (assiette(), assiette(CSG_VALEUR_DE_POINT_2025))
 
 
 def marginal_fourchette(socle_mensuel: float = SOCLE_RETENU,
                         forfait_mensuel: float | None = None
                         ) -> tuple[float, float]:
-    """Le prélèvement marginal au sommet, aux deux bornes de l'assiette.
+    """Le prélèvement marginal au sommet, aux deux bornes du chiffrage.
 
-    Le coût net ne dépend pas de l'assiette ; le taux, si. On recalcule donc le
-    taux sur chaque borne, et le marginal qui en découle.
+    Le cas favorable réunit l'assiette la plus large et les économies les plus
+    hautes ; le cas défavorable, l'inverse. Ce n'est pas une fourchette
+    statistique, c'est un encadrement : les deux bornes sont atteignables, et
+    aucune valeur n'est plus probable qu'une autre à l'intérieur.
     """
     net = boucler(socle_mensuel, forfait_mensuel).net
-    basse, haute = assiette_fourchette()
-    return (taux_marginal_sommet(net / haute),
-            taux_marginal_sommet(net / basse))
+    etroite, large = assiette_fourchette()
+    return (taux_marginal_sommet((net - ABSORBEES_INCERTITUDE) / large),
+            taux_marginal_sommet((net + ABSORBEES_INCERTITUDE) / etroite))
 
 
 def tient_sous_le_seuil(socle_mensuel: float = SOCLE_RETENU,
                         forfait_mensuel: float | None = None) -> bool:
     """La calibration reste-t-elle sous le seuil dans le cas le plus défavorable.
 
-    C'est le test qui a départagé la calibration retenue de la suivante : à
-    575 € et 330 €, le marginal reste sous les deux tiers même en prenant
-    l'assiette la plus étroite ; à 580 € et 340 €, il les franchit.
+    C'est le test qui départage les calibrations : celle qui est retenue doit
+    tenir aux deux bornes, pas seulement au centre.
     """
-    return marginal_fourchette(socle_mensuel, forfait_mensuel)[1] <= SEUIL_CONFISCATOIRE
+    return marginal_fourchette(socle_mensuel,
+                               forfait_mensuel)[1] <= SEUIL_CONFISCATOIRE
+
+
+#: La dernière calibration qui tient au bord défavorable, pour que le site
+#: puisse montrer de combien la calibration retenue s'en écarte. Elle n'est pas
+#: retenue : s'arrêter au centième d'une borne qui repose elle-même sur une
+#: appréciation serait reprendre d'une main la prudence donnée de l'autre.
+SOCLE_FRONTIERE, FORFAIT_FRONTIERE = 583, 340

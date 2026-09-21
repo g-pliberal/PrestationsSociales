@@ -2176,31 +2176,34 @@ def financement():
                    "population de la note elle-même (§4).")
     )
 
-    bas_assiette, haut_assiette = ch.assiette_fourchette()
+    etroite, large = ch.assiette_fourchette()
     taux = (
         f"<p>Financer {md(b.net)} suppose une assiette. La seule assiette large "
-        "déjà en place est celle de la CSG, et elle se reconstruit composant "
-        "par composant : chacun se déduit de son rendement publié et de son "
-        "taux.</p>"
+        "déjà en place est celle de la CSG, et il n'y a pas à l'estimer : le "
+        "rapport à la Commission des comptes de la Sécurité sociale la publie, "
+        "sous le nom de <strong>valeur de point</strong> — pour chaque assiette, "
+        "le rapport du rendement au taux, c'est-à-dire l'assiette au centième "
+        "près.</p>"
         + g.tableau(
-            ["Composant de l'assiette", "Ce que la CSG en tire", "À quel taux",
-             "Assiette correspondante"],
-            [[nom.capitalize(), md(rendement), pourcent_precis(taux_csg),
-              md(rendement / taux_csg)]
-             for nom, (rendement, taux_csg) in ch.CSG_RENDEMENTS.items()]
-            + [["<strong>Total</strong>", f"<strong>{md(ch.CSG_RENDEMENT)}</strong>",
-                "", f"<strong>{md(ch.ASSIETTE_LARGE)}</strong>"]],
-            ["texte", "nombre", "nombre", "nombre"],
-            "L'assiette de la contribution, reconstruite par composants")
+            ["Assiette", "Valeur d'un point de CSG", "Assiette correspondante"],
+            [[nom.capitalize(),
+              f"{valeur:,}".replace(",", FINE) + f"{FINE}M€",
+              md(valeur / 10)]
+             for nom, valeur in ch.CSG_VALEUR_DE_POINT.items()
+             if nom != "jeux"]
+            + [["<strong>Total retenu</strong>", "",
+                f"<strong>{md(ch.ASSIETTE_LARGE)}</strong>"]],
+            ["texte", "nombre", "nombre"],
+            "L'assiette de la contribution, exercice 2026")
         + g.note(
-            "<p>Les deux premiers composants sont exacts : un rendement publié "
-            "divisé par un taux unique. Le troisième ne l'est pas — les revenus "
-            "de remplacement portent des taux étagés, de 8,3 % sur les pensions "
-            "à 6,2 % sur le chômage — et le taux moyen retenu est un choix. "
-            "C'est la seule approximation du chiffrage, elle place l'assiette "
-            f"entre {md(bas_assiette)} et {md(haut_assiette)}, et "
-            '<a href="#robustesse">la calibration a été choisie pour y '
-            "résister</a>.</p>")
+            "<p>Les jeux sont écartés : leur assiette est la mise, pas un "
+            "revenu, et un socle financé par un prélèvement sur les revenus "
+            "n'a pas à s'y adosser. Le millésime retenu est celui de 2026, le "
+            f"plus étroit : la réforme de l'assiette sociale des travailleurs "
+            "indépendants y a transféré "
+            f"{md(large - etroite)} de la CSG vers les cotisations. Retenir "
+            f"2025 donnerait {md(large)} et un taux plus bas — le chiffrage "
+            "prend la version qui lui est défavorable.</p>")
         + g.tableau(
             ["Ce qu'il faut financer", "Assiette", "Contribution de solidarité"],
             [[md(b.net), md(ch.ASSIETTE_LARGE),
@@ -2219,10 +2222,10 @@ def financement():
              "En dessous de ce revenu mensuel, on reçoit plus qu'on ne verse. "
              "C'est le cas de l'écrasante majorité des actifs."),
         ])
-        + g.repere("Rendements de la CSG par catégorie, 2025 ; taux "
-                   "statutaires 2026. L'assiette de chaque composant en est "
-                   "déduite, et le taux de la contribution est le rapport du "
-                   "coût net à leur somme.")
+        + g.repere("Rapport à la Commission des comptes de la Sécurité "
+                   "sociale, mai 2026 : valeur de point de la CSG par "
+                   "assiette, exercice 2026 prévisionnel. Le taux de la "
+                   "contribution est le rapport du coût net à leur somme.")
     )
 
     arbitrage = (
@@ -2603,13 +2606,15 @@ def financement():
 
     robustesse = (
         "<p>Un chiffrage qui ne dit pas son incertitude ne se vérifie pas. "
-        "Celui-ci en a une, et une seule : le taux moyen retenu sur les revenus "
-        "de remplacement. Les deux autres composants de l'assiette sont exacts. "
-        "Cette incertitude vaut d'être mesurée, parce que <strong>c'est elle "
-        "qui a départagé la calibration retenue de la suivante</strong>.</p>"
+        "Celle-ci a changé de nature : elle portait sur l'assiette, qui est "
+        "désormais publiée. Il en reste deux, plus petites — le millésime de "
+        "l'assiette, et les prestations que le socle absorbe, dont les montants "
+        "sont des dépenses de 2024 et dont la part absorbée est une "
+        "appréciation. On les encadre l'une et l'autre, et <strong>c'est cet "
+        "encadrement qui départage les calibrations</strong>.</p>"
         + g.tableau(
-            ["Calibration", "Prélèvement marginal, assiette large",
-             "Assiette étroite", "Tient sous le seuil"],
+            ["Calibration", "Prélèvement marginal, cas favorable",
+             "Cas défavorable", "Tient sous le seuil"],
             [[f"{eur(socle)} / {eur(forfait)}"
               + (' <span class="badge proposition">retenu</span>'
                  if (socle, forfait) == (ch.SOCLE_RETENU, ch.FORFAIT_RETENU)
@@ -2621,15 +2626,21 @@ def financement():
                else '<span class="badge">non</span>')]
              for socle, forfait in [(ch.SOCLE_CIBLE, ch.FORFAIT_NEUTRE_BUDGET),
                                     (ch.SOCLE_RETENU, ch.FORFAIT_RETENU),
-                                    (580, 340), (585, 345)]],
+                                    (ch.SOCLE_FRONTIERE, ch.FORFAIT_FRONTIERE),
+                                    (590, 350)]],
             ["texte", "nombre", "nombre", "texte"],
             "Le prélèvement marginal aux deux bornes de l'assiette, "
             f"seuil à {pourcent_fin(ch.SEUIL_CONFISCATOIRE)}")
-        + "<p>La lecture est sans ambiguïté. <strong>La calibration retenue est "
-        "la dernière qui reste sous le seuil même dans l'hypothèse la plus "
-        "défavorable.</strong> La suivante n'y résiste pas : elle tient sur "
-        "l'assiette centrale et la franchit sur l'assiette étroite. Ce n'est "
-        "donc pas un arbitrage de préférence, c'est une frontière.</p>"
+        + "<p>La lecture est sans ambiguïté. La dernière calibration qui "
+        f"tienne au bord défavorable est {eur(ch.SOCLE_FRONTIERE)} de socle et "
+        f"{eur(ch.FORFAIT_FRONTIERE)} de forfait — à deux centièmes de point "
+        "du seuil. <strong>Ce n'est pas celle qui est retenue.</strong> "
+        "S'arrêter au centième d'une borne qui repose elle-même sur une "
+        "appréciation reviendrait à reprendre d'une main la prudence donnée de "
+        f"l'autre. La calibration retenue s'arrête à {eur(ch.SOCLE_RETENU)} et "
+        f"{eur(ch.FORFAIT_RETENU)}, et garde "
+        + pourcent_fin(ch.SEUIL_CONFISCATOIRE - ch.marginal_fourchette()[1])
+        + " de coussin au-delà du cas défavorable.</p>"
         + g.note(
             "<p>Deux choses tempèrent ce seuil, et il vaut mieux les connaître "
             "que les découvrir. D'abord, il est <strong>prudentiel</strong> : "
@@ -2647,9 +2658,11 @@ def financement():
                   "décision n° 2012-662 DC du 29 décembre 2012 ; contribution "
                   "différentielle sur les hauts revenus, article 10 de la loi "
                   "de finances pour 2025.")
-        + g.repere("Fourchette obtenue en faisant varier le seul taux approché "
-                   "du chiffrage — celui des revenus de remplacement — entre "
-                   "ses deux bornes statutaires, 6,2 % et 8,3 %.")
+        + g.repere("Le cas favorable réunit l'assiette la plus large — "
+                   "millésime 2025 — et trois milliards d'économies de plus "
+                   "sur les prestations absorbées ; le cas défavorable, "
+                   "l'inverse. Les deux bornes sont atteignables, et aucune "
+                   "valeur n'est plus probable qu'une autre entre elles.")
     )
 
     enveloppe = (

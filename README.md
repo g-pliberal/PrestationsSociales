@@ -80,25 +80,27 @@ le barème ne bouge pas.
 Ces décisions sont celles du parti, pas des lectures de la note, et le site les
 signale comme telles partout où elles apparaissent.
 
-**4. La calibration retenue est 575 € de socle et
-330 € de forfait enfant.** Le plafond avait refermé ces deux
+**4. La calibration retenue est 580 € de socle et
+335 € de forfait enfant.** Le plafond avait refermé ces deux
 questions sur une même enveloppe, qui ne s'achète qu'une fois. L'arbitrage en
-dépense 20 Md€
-sur 25 et garde le reste : les trois
-situations qui perdent progressent toutes les trois, aucune n'est sacrifiée, et
-il subsiste une marge sous le seuil de censure.
+dépense 27 Md€ sur 34
+et garde le reste : les trois situations qui perdent progressent toutes les
+trois, et les deux pertes structurelles s'égalisent à
+283 € par mois.
 
 Tout mettre sur le forfait enfant aurait presque refermé le cas de la famille
 monoparentale, mais au prix du salarié au SMIC — qui aurait payé le taux plus
 élevé sans rien recevoir. Pour un programme dont la promesse centrale est que le
 travail paie toujours, c'est le seul arbitrage vraiment interdit.
 
-Et ce n'est pas qu'une préférence : **la calibration retenue est la dernière qui
-reste sous le seuil de censure dans l'hypothèse d'assiette la plus
-défavorable.** Le prélèvement marginal au sommet du barème y tient entre
-65.85 % et 66.54 %, contre un seuil de
-66.67 % ; la calibration immédiatement supérieure
-le franchit. `financement.html` publie ce test.
+Et ce n'est pas qu'une préférence. Le chiffrage encadre ses deux incertitudes
+restantes — le millésime de l'assiette, et les prestations absorbées — et la
+calibration retenue **tient sous le seuil de censure aux deux bornes** : le
+prélèvement marginal au sommet du barème y va de 66,27 % à
+66,56 %, contre un seuil de 66,67 %. La
+dernière calibration qui y tienne serait 583 € et
+340 €, à deux centièmes de point du seuil ; on s'arrête en
+deçà. `financement.html` publie ce test.
 
 La note donne une fourchette de 500 à 600 € (§4) et une cible de
 550 € ; `SOCLE_CIBLE` et `SOCLE_RETENU` sont deux constantes
