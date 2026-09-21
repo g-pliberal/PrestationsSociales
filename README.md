@@ -62,6 +62,13 @@ C'est la lecture cohérente avec l'architecture à trois étages du §3, et la s
 tenable une fois la première décision prise : l'assiette comprend les pensions,
 et un retraité qui paie sans rien recevoir n'était pas défendable.
 
+**3. Un complément vieillesse** est versé par-dessus le socle senior, décalque
+du complément handicap du §10 : différentiel, il porte les ressources d'une
+personne âgée seule à 1043.59 €, le niveau de l'ASPA
+d'aujourd'hui. Il coûte environ 1 Md€ contre
+4.3 Md€ pour l'ASPA, parce que celle-ci est différentielle et que le
+socle servi à tous en absorbe l'essentiel.
+
 Ensemble, elles portent la contribution de 13 % à **19 %** et produisent une
 contrainte que personne n'avait vue : le prélèvement marginal au sommet du
 barème atteint **66.0 %**, contre un seuil de censure de
@@ -97,7 +104,7 @@ n'existe qu'une fois, dans `construire_site.py`.
 | `cas-types.html` | 9 situations chiffrées, avant et après, **perdants compris**, Mayotte et pension médiane incluses | chiffrage |
 | `jeunes.html` | Le socle dès 18 ans, les APL étudiantes, les bourses | §6, §13, §20.3 |
 | `familles.html` | Le crédit familial, le bouclier monoparental, le couple | §7, §8, §9, §11 |
-| `protections.html` | Handicap, logement, chômage, retraites : ce qui reste à part | §10, §12, §14, §15 |
+| `protections.html` | Handicap, logement, chômage, retraites : ce qui reste à part, et **le complément vieillesse** | §10, §12, §14, §15 + chiffrage |
 | `nouveaux-residents.html` | La convergence, **les sept publics auxquels le droit interdit de l'appliquer**, la jurisprudence, le périmètre réel, et **un contrôle sans fichier nouveau** | §16, §17, §20.5 + droit applicable |
 | `financement.html` | Coût brut, **coût net** des deux étages, taux, point de bascule, **les deux décisions du parti** et le plafond constitutionnel qu'elles imposent | §18, §20.1 + chiffrage et droit |
 | `calendrier.html` | Les cinq années de bascule et les six points de vigilance | §19, §20 |

@@ -114,6 +114,7 @@ def chiffrage_signale() -> list[str]:
         "cas-types.html": ["Chiffrage —"],
         "nouveaux-residents.html": ["Droit applicable —"],
         "revenu-universel.html": ["Chiffrage —", "Droit applicable —"],
+        "protections.html": ["Chiffrage —"],
     }
     manquants = []
     for fichier, marqueurs in attendus.items():

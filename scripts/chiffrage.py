@@ -257,7 +257,11 @@ def boucler(socle_mensuel: float = SOCLE_CIBLE) -> Bouclage:
     return boucler_etage(
         socle_mensuel,
         personnes=POPULATION_18_64 + POPULATION_65_PLUS,
-        absorbe_milliards=sum(poste.milliards for poste in ABSORBEES) + ASPA_COUT)
+        # L'ASPA est absorbée, mais le complément vieillesse en sert une part :
+        # il se retranche donc de l'économie, et non du coût brut.
+        absorbe_milliards=(sum(poste.milliards for poste in ABSORBEES)
+                           + ASPA_COUT
+                           - cout_complement_vieillesse(socle_mensuel)))
 
 
 def boucler_etage(socle_mensuel: float = SOCLE_CIBLE,
@@ -341,16 +345,48 @@ def cout_senior(socle_mensuel: float = SOCLE_CIBLE) -> float:
             - ASPA_COUT)
 
 
-def cout_complement_vieillesse(socle_mensuel: float = SOCLE_CIBLE) -> float:
-    """Ce que coûterait le plancher qui protège les bénéficiaires de l'ASPA.
+#: Le complément vieillesse porte les ressources au niveau de l'ASPA. Il est
+#: DIFFÉRENTIEL, comme elle, et c'est ce qui le rend abordable : le socle étant
+#: servi à tous, il ne reste à payer que ce qui dépasse.
+COMPLEMENT_VIEILLESSE_PLAFOND = ASPA_PERSONNE_SEULE
 
-    Servir le socle à tous ne suffit pas à les mettre à l'abri : le socle est
-    inférieur à l'ASPA. Il leur faut le même traitement que la note réserve au
-    handicap — un complément versé en plus du socle, calibré pour que personne
-    ne perde. C'est le corollaire de la décision, et il n'est pas cher.
+
+def complement_vieillesse(pension: float, socle_mensuel: float = SOCLE_CIBLE) -> float:
+    """Ce que touche, en plus du socle, un retraité dont la pension est faible."""
+    return max(0.0, COMPLEMENT_VIEILLESSE_PLAFOND - socle_mensuel - pension)
+
+
+def cout_complement_vieillesse(socle_mensuel: float = SOCLE_CIBLE) -> float:
+    """Le coût annuel du complément vieillesse, en Md€.
+
+    ATTENTION À LA MÉCANIQUE, parce qu'elle est contre-intuitive et qu'une
+    première version de ce calcul s'y est trompée d'un facteur quatre.
+
+    L'ASPA est DIFFÉRENTIELLE : elle complète les ressources jusqu'à un
+    plafond. Un bénéficiaire qui touche 512 € d'ASPA a donc déjà 532 € de
+    pension par ailleurs. Servir le socle à tous lui apporte 550 € de plus, ce
+    qui le fait passer AU-DESSUS du plafond : il n'a plus besoin de rien.
+
+    Le complément ne paie donc, par bénéficiaire, que la part de l'ASPA
+    d'aujourd'hui qui EXCÈDE le socle — et non l'écart entre le socle et le
+    plafond, qui supposerait une pension nulle pour tous.
+
+    Faute de connaître la distribution des montants d'ASPA servis, on la prend
+    uniforme entre zéro et le plafond. L'hypothèse n'est pas gratuite : une
+    telle distribution a pour moyenne la moitié du plafond, soit 521,80 €, et
+    la moyenne observée est de 512 € — deux pour cent d'écart. C'est une
+    coïncidence utile, et elle est dite plutôt que cachée.
     """
-    ecart = max(0.0, ASPA_PERSONNE_SEULE - socle_mensuel)
-    return ecart * 12 * BENEFICIAIRES_ASPA / MILLIARD
+    plafond = COMPLEMENT_VIEILLESSE_PLAFOND
+    if socle_mensuel >= plafond:
+        return 0.0
+    moyenne_versee = (plafond - socle_mensuel) ** 2 / (2 * plafond)
+    return moyenne_versee * 12 * BENEFICIAIRES_ASPA / MILLIARD
+
+
+def aspa_moyenne_observee() -> float:
+    """L'allocation moyenne effectivement servie, qui valide l'hypothèse."""
+    return ASPA_COUT * MILLIARD / BENEFICIAIRES_ASPA / 12
 
 
 # -- 5. le forfait enfant ----------------------------------------------------
@@ -478,15 +514,20 @@ def cas_types(socle: float = SOCLE_CIBLE, taux: float | None = None,
             "foyer sans revenu n'est pas imposable.",
             personnes=3),
         CasType(
-            "Retraité au minimum vieillesse",
-            "À l'ASPA. Environ 700 000 personnes.",
+            "Retraité au minimum vieillesse, sans pension",
+            "À l'ASPA, et sans aucune autre ressource. Le cas le plus "
+            "défavorable de la population du minimum vieillesse.",
             [("ASPA", ASPA_PERSONNE_SEULE)],
-            [("Socle senior, au niveau du socle adulte", socle)],
-            "Ce cas-type n'existe que parce que la note ne chiffre pas le "
-            "socle senior. Écrire que le socle senior est servi au niveau de "
-            "l'ASPA le fait disparaître, pour 4,3 Md€ — le coût actuel du "
-            "minimum vieillesse.",
-            "Disparaît si le socle senior est calibré au niveau de l'ASPA."),
+            [("Socle senior", socle),
+             ("Complément vieillesse", complement_vieillesse(0, socle))],
+            "Neutre, et c'est le complément vieillesse qui le rend tel. Le "
+            "socle seul l'aurait fait perdre "
+            f"{ASPA_PERSONNE_SEULE - socle:.0f} € par mois : c'est le décalque "
+            "exact du complément handicap que la note prévoit au §10, appliqué "
+            "à la vieillesse.",
+            "La neutralité suppose un complément différentiel calibré sur le "
+            f"plafond de l'ASPA, soit {ASPA_PERSONNE_SEULE:.2f} € de ressources "
+            "garanties."),
         CasType(
             "Retraité à la pension médiane",
             "La moitié des retraités perçoit moins que cette pension.",

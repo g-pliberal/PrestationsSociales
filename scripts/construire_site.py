@@ -1310,6 +1310,11 @@ def protections():
              ["Santé urgente et santé publique", "Maintien à part"]],
             ["texte", "long"],
             "Les dispositifs que le socle ne remplace pas")
+        + "<p>Ce mécanisme — un socle commun, un complément ciblé par-dessus — "
+        "n'est pas propre au handicap. C'est la <strong>forme générale</strong> "
+        "que prend le traitement d'une vulnérabilité dans ce programme, et il "
+        'sert une seconde fois pour la vieillesse : <a href="#complement-'
+        'vieillesse">voir le complément vieillesse</a>.</p>' 
         + g.note(
             "<p>Cette distinction répond à l'objection la plus fréquente faite au revenu "
             "universel : l'idée qu'un montant unique remplacerait indistinctement toutes "
@@ -1399,6 +1404,55 @@ def protections():
                  "programme et d'un simulateur séparés</a>.</p>")
         + g.source("Note de doctrine, §15 — Retraites : RU senior et maîtrise de la "
                    "dépense.")
+        + '<div id="complement-vieillesse"><h3>Le complément vieillesse</h3>'
+        + "<p>Le socle senior est servi à tous, mais il est inférieur à "
+        f"l'actuel minimum vieillesse : {eur(ch.ASPA_PERSONNE_SEULE)} contre "
+        f"{eur(ch.SOCLE_CIBLE)}. Servi seul, il ferait perdre "
+        f"{eur(ch.ASPA_PERSONNE_SEULE - ch.SOCLE_CIBLE)} par mois à une "
+        "personne âgée sans ressources. <strong>Un complément vieillesse est "
+        "donc versé par-dessus</strong>, exactement comme l'AAH devient un "
+        "complément handicap.</p>"
+        + g.gestes([
+            "<strong>Il est différentiel</strong> — il porte les ressources "
+            f"jusqu'à {eur(ch.ASPA_PERSONNE_SEULE)}, et pas au-delà. C'est la "
+            "mécanique de l'ASPA qu'il remplace, et la seule qui soit "
+            "finançable : un complément forfaitaire versé à tous les retraités "
+            "coûterait plus de quatre-vingts milliards.",
+            "<strong>Il ne concerne qu'une minorité</strong> — le socle de "
+            f"{eur(ch.SOCLE_CIBLE)} couvre à lui seul la plus grande partie de "
+            "ce que l'ASPA versait. Ne reste à payer que ce qui dépasse.",
+            "<strong>Il garantit un plancher, pas un droit nouveau</strong> — "
+            "aucun bénéficiaire actuel du minimum vieillesse ne perd un euro, "
+            "et aucun n'en gagne.",
+        ])
+        + g.engagements([
+            (eur(ch.ASPA_PERSONNE_SEULE), "Le plancher garanti",
+             "Ressources minimales d'une personne âgée seule, socle et "
+             "complément réunis. C'est le niveau de l'ASPA d'aujourd'hui, à "
+             "l'euro près."),
+            (md(ch.cout_complement_vieillesse()), "Ce qu'il coûte",
+             f"Contre {md(ch.ASPA_COUT)} pour l'ASPA actuelle : le socle "
+             "servi à tous en absorbe l'essentiel."),
+        ])
+        + g.note(
+            "<p><strong>C'est le seul endroit du programme où une condition de "
+            "ressources survit, et il vaut mieux le dire que le laisser "
+            "trouver.</strong> Le principe 6 l'autorise — seules les "
+            "vulnérabilités spécifiques justifient des dispositifs séparés "
+            "(§20.6) — et la vieillesse sans ressources en est une. Mais la "
+            "contrepartie doit être assumée : comme l'ASPA, ce complément "
+            "décroît euro pour euro quand la pension augmente. Pour un "
+            "retraité, la pension ne se négocie pas, de sorte que l'effet de "
+            "seuil n'a pas la portée qu'il aurait sur un revenu d'activité — "
+            "c'est ce qui rend la mécanique acceptable ici, et nulle part "
+            "ailleurs.</p>", "vigilance")
+        + g.repere("Coût estimé à partir de la dépense d'ASPA constatée et du "
+                   "nombre de bénéficiaires. Le complément ne paie que la part "
+                   "de l'allocation actuelle qui excède le socle, et non "
+                   "l'écart entre le socle et le plafond — l'ASPA étant "
+                   "différentielle, ses bénéficiaires disposent déjà d'une "
+                   "pension.")
+        + "</div>"
     )
 
     return page(
@@ -1989,6 +2043,11 @@ def financement():
         lignes.append([poste.libelle, f"− {md(poste.milliards)}", poste.detail])
     lignes.append(["ASPA", f"− {md(ch.ASPA_COUT)}",
                    "Absorbée par le socle senior (note, §15)."])
+    lignes.append(["Complément vieillesse",
+                   f"+ {md(ch.cout_complement_vieillesse())}",
+                   "Le plancher qui porte les ressources d'une personne âgée "
+                   f"seule à {eur(ch.ASPA_PERSONNE_SEULE)}. "
+                   '<a href="protections.html#complement-vieillesse">Voir</a>'])
     lignes.append(["<strong>Coût net à financer</strong>",
                    f"<strong>{md(b.net)}</strong>",
                    "Le seul chiffre qui commande le reste."])
@@ -2359,16 +2418,24 @@ def financement():
         "réforme</strong> (§15), et cela reste vrai : ce n'est pas la pension "
         "qui change, c'est le socle qui s'y ajoute. Les deux affirmations "
         "tiennent ensemble, et il faut les dire ensemble.</p>"
+        + "<p>Le corollaire est écrit lui aussi. Servir le socle à tous ne "
+        "met pas à l'abri les bénéficiaires du minimum vieillesse : l'ASPA "
+        f"vaut {eur(ch.ASPA_PERSONNE_SEULE)}, le socle {eur(ch.SOCLE_CIBLE)}. "
+        "Un <strong>complément vieillesse</strong> est donc versé par-dessus, "
+        "décalque exact du complément handicap du §10, et il porte les "
+        f"ressources d'une personne âgée seule à {eur(ch.ASPA_PERSONNE_SEULE)} "
+        "— le niveau d'aujourd'hui, à l'euro près.</p>"
         + g.note(
-            "<p><strong>Un corollaire reste à écrire, et il est bon marché.</strong> "
-            "Servir le socle à tous ne met pas à l'abri les bénéficiaires du "
-            f"minimum vieillesse : l'ASPA vaut {eur(ch.ASPA_PERSONNE_SEULE)}, "
-            f"le socle {eur(ch.SOCLE_CIBLE)}. Il leur faut le traitement que la "
-            "note réserve déjà au handicap (§10) — un <strong>complément "
-            "vieillesse</strong> versé en plus du socle, calibré pour que "
-            f"personne ne perde. Coût : {md(ch.cout_complement_vieillesse())}, "
-            "et le dernier cas type perdant chez les retraités disparaît. "
-            '<a href="cas-types.html">Voir les cas types</a></p>', "vigilance")
+            f"<p>Il coûte {md(ch.cout_complement_vieillesse())}, contre "
+            f"{md(ch.ASPA_COUT)} pour l'ASPA qu'il remplace, et la raison de "
+            "cet écart mérite d'être comprise : <strong>l'ASPA est "
+            "différentielle</strong>. Ses bénéficiaires disposent déjà d'une "
+            f"pension — {eur(ch.ASPA_PERSONNE_SEULE - ch.aspa_moyenne_observee())} "
+            "en moyenne —, et le socle servi à tous les fait passer au-dessus "
+            "du plafond dans la plupart des cas. Le complément ne paie que ce "
+            "qui dépasse. "
+            '<a href="protections.html#complement-vieillesse">Voir le '
+            "dispositif</a></p>")
         + g.source("Note de doctrine, §3 — l'architecture à trois étages ; "
                    "§15 — aucune hausse générale des pensions ; §10 — le "
                    "complément handicap, dont le complément vieillesse serait "
@@ -2685,12 +2752,12 @@ def questions():
                        "absorbée. La note, elle, s'arrête au coût brut."),
               identifiant="q-cout"),
         g.cle("Qui y perd ?",
-              "Quatre situations, et le site les chiffre plutôt que de les laisser "
+              "Trois situations, et le site les chiffre plutôt que de les laisser "
               "découvrir : le célibataire sans emploi aujourd'hui au RSA et à l'aide "
-              "au logement, la famille monoparentale modeste, le bénéficiaire du "
-              "minimum vieillesse tant qu'un complément vieillesse n'est pas écrit, "
-              "et le salarié au SMIC, dont la perte vient du taux de contribution "
-              "qu'appelle le financement des deux étages.",
+              "au logement, la famille monoparentale modeste, et le salarié au SMIC, "
+              "dont la perte vient du taux de contribution qu'appelle le financement "
+              "des deux étages. Les bénéficiaires du minimum vieillesse et de l'AAH, "
+              "eux, sont protégés par un complément.",
               '<p class="actions"><a class="bouton" href="cas-types.html">Voir les '
               f"{en_lettres(len(ch.cas_types()))} situations</a></p>",
               g.repere("Sept cas types calculés aux barèmes 2026, perdants compris."),
