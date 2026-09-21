@@ -297,13 +297,15 @@ function rendre() {
     }
   }
   if (reglage.senior) {
-    phrases.push("<p>Le socle senior remplace l'ASPA et les dispositifs non "
-      + "contributifs de minimum vieillesse. Il <strong>n'augmente aucune pension "
-      + "existante</strong> : une pension contributive s'ajoute à ce calcul, selon "
-      + 'les droits acquis. <a href="protections.html#retraites">Voir les '
-      + "retraites</a></p>");
-    phrases.push("<p>La note ne chiffre pas le socle senior séparément : le calcul "
-      + "retient ici le montant du socle adulte.</p>");
+    phrases.push("<p>Le socle senior est <strong>versé à tous</strong>, au même "
+      + "montant que le socle adulte, et il remplace l\u2019ASPA. Il "
+      + "<strong>n\u2019augmente aucune pension existante</strong> : ce n\u2019est "
+      + "pas la pension qui change, c\u2019est le socle qui s\u2019y ajoute. La "
+      + "contribution, elle, porte sur la pension. "
+      + '<a href="financement.html#retraites">Voir la décision</a></p>');
+    phrases.push("<p>Les bénéficiaires du minimum vieillesse relèvent en plus "
+      + "d\u2019un complément, calibré pour qu\u2019ils ne perdent rien. Il n\u2019est "
+      + "pas simulé ici.</p>");
   }
   if (reglage.enfants > 0) {
     phrases.push("<p>Seul le forfait enfant est compté ici. Le crédit familial "

@@ -729,7 +729,7 @@ def simulateur():
         + g.liste("statut", "Votre situation", [
             ("adulte", "Adulte de 18 à 64 ans"),
             ("senior", "Retraité — socle senior"),
-        ], "adulte", "Le socle senior remplace l'ASPA, il n'augmente aucune pension.")
+        ], "adulte", "Le socle senior est versé à tous, en plus de la pension.")
         + g.champ("enfants", "Enfants à charge", "0",
                   "Chaque enfant ouvre un crédit familial.",
                   attributs={"min": "0", "max": "12", "step": "1",
@@ -979,21 +979,26 @@ def cas_types():
 
     ceux_qui_perdent = (
         f"<p>Les {en_lettres(len(perdants))} situations ci-dessous perdent avec "
-        "la calibration que la note retient. Deux d'entre elles se ferment par "
-        "une décision qui ne coûte presque rien ; la troisième est l'arbitrage "
-        "central du programme.</p>"
+        "la calibration retenue, et elles ne perdent pas pour la même raison. "
+        "Trois n'ont aucun revenu du travail : le socle leur apporte moins que "
+        "l'empilement qu'il remplace. La quatrième est le salarié au SMIC, et "
+        "sa perte vient d'ailleurs — de la contribution de "
+        f"{pourcent(ch.taux_publie())} qu'appelle le financement des deux "
+        "étages. C'est le prix des décisions prises sur l'impôt et sur le "
+        "socle senior, et il se voit ici.</p>"
         + "".join(_cas_type(c) for c in perdants)
         + g.note(
-            "<p><strong>Ce que ces trois cas ont en commun : ils n'ont pas de "
-            "revenu du travail.</strong> Le socle leur apporte moins que "
-            "l'empilement actuel parce que cet empilement était, pour eux, "
-            "plus généreux que le socle — c'est la contrepartie arithmétique "
-            "de la simplicité. Le programme ne peut pas à la fois supprimer le "
-            "millefeuille et garantir que personne n'y perde, sauf à porter le "
-            f"socle à {eur(ch.SOCLE_NEUTRALITE)} et la contribution à "
+            "<p>Le programme ne peut pas à la fois supprimer le millefeuille "
+            "et garantir que personne n'y perde : il faudrait pour cela porter "
+            f"le socle à {eur(ch.SOCLE_NEUTRALITE)}, et la contribution à "
             f"{pourcent(ch.boucler(ch.SOCLE_NEUTRALITE).taux)}. "
-            '<a href="financement.html#arbitrage">Voir ce que coûte chaque '
-            "niveau de socle</a></p>", "vigilance")
+            "<strong>Ce n'est plus seulement cher : c'est fermé.</strong> "
+            "Au-delà d'un socle de "
+            f"{eur(ch.SOCLE_PLAFOND)}, le prélèvement marginal au sommet du "
+            "barème franchit le seuil des deux tiers au-delà duquel le juge "
+            "constitutionnel censure. "
+            '<a href="financement.html#marginal">Voir le plafond</a></p>',
+            "vigilance")
     )
 
     ceux_qui_gagnent = (
@@ -1014,10 +1019,11 @@ def cas_types():
              "qui raisonne par foyer, ne verse presque rien. C'est mérité, "
              "c'est cohérent, et c'est très coûteux."),
             ("Les perdants sont tout en bas",
-             "Les trois perdants sont les trois situations sans revenu du "
-             "travail. Une réforme qui prend au premier décile pour "
-             "redistribuer au cinquième est défendable si on l'assume ; elle "
-             "est indéfendable si on la découvre en campagne."),
+             "Trois des perdants n'ont aucun revenu du travail, et le "
+             "quatrième est au SMIC. Une réforme qui prend au premier décile "
+             "et au salarié au salaire minimum pour financer le troisième "
+             "étage est défendable si on l'assume ; elle est indéfendable si "
+             "on la découvre en campagne."),
             ("Les jeunes sont le meilleur terrain",
              "L'étudiant décohabitant multiplie par trois sa ressource "
              "publique, et c'est le seul cas où le programme tient exactement "
@@ -1040,8 +1046,8 @@ def cas_types():
         f"Cas types — {g.TITRE_SITE}",
         f"{en_lettres(len(cas), majuscule=True)} situations chiffrées aux "
         "barèmes 2026, avant et après la réforme, perdants compris : "
-        "célibataire au RSA, famille monoparentale, minimum vieillesse, AAH, "
-        "SMIC, couple bi-actif, Mayotte, étudiant.",
+        "célibataire au RSA, famille monoparentale, minimum vieillesse, "
+        "pension médiane, AAH, SMIC, couple bi-actif, Mayotte, étudiant.",
         "Cas types",
         f"{en_lettres(len(cas), majuscule=True)} situations,<br>perdants "
         "compris",
@@ -1496,7 +1502,8 @@ JURISPRUDENCE = [
      "les étrangers résidant régulièrement en France « méconnaît le principe "
      "constitutionnel d'égalité ». Un étranger en séjour stable et régulier a "
      "droit à la protection sociale.",
-     "Le socle senior remplace l'ASPA, qui descend de cette allocation. La "
+     "Le socle senior, servi à tous, remplace l'ASPA, qui descend de cette "
+     "allocation. La "
      "décision porte donc directement sur le troisième étage de la réforme."),
     ("Conseil constitutionnel, 2011-137 QPC, 17 juin 2011",
      "Le Conseil a <strong>validé</strong> la condition de cinq ans de "
@@ -1967,10 +1974,21 @@ def financement():
          "Sur une assiette large, de l'ordre de celle de la CSG."),
     ])
 
-    lignes = [[f"<strong>Coût brut</strong> — {ch.SOCLE_CIBLE} € × 12 × 40 millions",
-               f"<strong>{md(b.brut)}</strong>", ""]]
+    adulte = ch.boucler_etage()
+    lignes = [
+        [f"<strong>Socle adulte</strong> — {ch.SOCLE_CIBLE} € × 12 × 40 millions",
+         f"<strong>{md(adulte.brut)}</strong>",
+         "Les 18-64 ans, selon l'hypothèse de population de la note (§4)."],
+        [f"<strong>Socle senior</strong> — {ch.SOCLE_CIBLE} € × 12 × 14,7 millions",
+         f"<strong>{md(ch.cout_brut(ch.SOCLE_CIBLE, ch.POPULATION_65_PLUS) / ch.MILLIARD)}</strong>",
+         "Le troisième étage, servi à tous. La note le pose (§3) sans le "
+         'chiffrer. <a href="#retraites">Voir la décision</a>'],
+        ["<strong>Coût brut total</strong>", f"<strong>{md(b.brut)}</strong>", ""],
+    ]
     for poste in ch.ABSORBEES:
         lignes.append([poste.libelle, f"− {md(poste.milliards)}", poste.detail])
+    lignes.append(["ASPA", f"− {md(ch.ASPA_COUT)}",
+                   "Absorbée par le socle senior (note, §15)."])
     lignes.append(["<strong>Coût net à financer</strong>",
                    f"<strong>{md(b.net)}</strong>",
                    "Le seul chiffre qui commande le reste."])
@@ -2042,8 +2060,13 @@ def financement():
                if c.socle == ch.SOCLE_MARCHE else
                "Cible de régime stabilisé (note, §4)."
                if c.socle == ch.SOCLE_CIBLE else
-               "Le socle auquel plus personne ne perd — voir les "
-               '<a href="cas-types.html">cas types</a>.'
+               "<strong>Le plafond</strong> : au-delà, le prélèvement marginal "
+               "au sommet du barème franchit le seuil des deux tiers. "
+               '<a href="#marginal">Voir le calcul</a>'
+               if c.socle == ch.SOCLE_PLAFOND else
+               "Le socle auquel plus personne ne perd — mais il est "
+               "<strong>hors d'atteinte</strong> : sa contribution est "
+               "largement au-dessus du plafond ci-dessus."
                if c.socle == ch.SOCLE_NEUTRALITE else
                "Haut de la fourchette citée par la note.")]
              for c in ch.calibrations()],
@@ -2058,30 +2081,12 @@ def financement():
     )
 
     trous = (
-        "<p>Deux montants manquent encore au programme, et l'ordre de "
-        "grandeur de chacun est tel qu'aucun chiffrage ne tient tant qu'ils ne "
-        "sont pas écrits. Les voici, avec ce que chaque réponse coûte. Le "
-        "troisième — la contribution remplace-t-elle l'impôt sur le revenu ou "
-        "s\'y ajoute-t-elle ? — <a href=\"#ajout\">est désormais tranché</a>.</p>"
-        + g.depliant(
-            "Le socle senior — un écart de 93 milliards",
-            "<p>La note pose trois étages (§3) et n'en chiffre qu'un. Le coût "
-            f"brut de {md(b.brut)} ne couvre que les 18-64 ans. Pour le "
-            "troisième étage, deux lectures, et elles ne coûtent pas la même "
-            "chose :</p>"
-            + g.tableau(
-                ["Lecture", "Montant servi", "Coût net", "Conséquence"],
-                [[etage.libelle, etage.montant, md(etage.cout_net),
-                  etage.consequence]
-                 for etage in ch.etages_seniors()],
-                ["texte long", "texte", "nombre", "texte long"],
-                "Les deux lectures possibles du socle senior")
-            + "<p>Tant que ce n'est pas tranché, un lecteur qui applique le "
-            f"socle adulte lit une baisse de {eur(ch.ASPA_PERSONNE_SEULE)} à "
-            f"{eur(ch.SOCLE_CIBLE)} sur le minimum vieillesse. Écrire que le "
-            "socle senior est servi au niveau de l'ASPA ferme la question pour "
-            f"{md(ch.ASPA_COUT)}.</p>",
-            "socle-senior")
+        "<p>La note laissait trois montants ouverts. Deux sont désormais "
+        "écrits : la contribution "
+        '<a href="#ajout">s\'ajoute à l\'impôt sur le revenu</a>, et le socle '
+        'senior <a href="#retraites">est servi à tous</a>. Reste le '
+        "troisième, et son ordre de grandeur est tel qu'aucun chiffrage du "
+        "bloc familial ne tient tant qu'il n'est pas fixé.</p>"
         + g.depliant(
             "Le forfait enfant — le montant qui décide du sort des monoparentales",
             "<p>Le crédit familial remplace "
@@ -2285,6 +2290,35 @@ def financement():
             f"{pourcent_precis(ch.taux_marginal_sommet(ch.taux_publie()))} et "
             "reste en dessous. Une ligne de texte sépare une réforme "
             "constitutionnelle d'une réforme censurée.</p>", "vigilance")
+        + "<p>Ce résultat n'est pas seulement rassurant : il est "
+        "<strong>contraignant pour tout le reste du programme</strong>, et "
+        "c'est la conséquence la moins visible des deux décisions prises. "
+        "Puisque le barème de l'impôt ne bouge pas et que la contribution "
+        "finance deux étages, le taux ne peut plus monter très haut avant que "
+        "le prélèvement marginal ne franchisse la ligne. On peut calculer "
+        "exactement où elle est.</p>"
+        + g.engagements([
+            (pourcent_precis(ch.taux_maximal_constitutionnel()),
+             "Le taux maximal",
+             "Au-delà, le prélèvement marginal au sommet du barème dépasse les "
+             f"deux tiers. Nous sommes à {pourcent(b.taux)}."),
+            (eur(ch.SOCLE_PLAFOND),
+             "Le socle maximal qu'il finance",
+             f"Contre {eur(ch.SOCLE_CIBLE)} de cible. C'est peu de marge, et "
+             "c'est toute celle dont le programme dispose."),
+        ])
+        + g.note(
+            "<p>Il faut en tirer la conséquence tout de suite, parce qu'elle "
+            "ferme une option que ce site présentait encore comme ouverte. Le "
+            f"socle de {eur(ch.SOCLE_NEUTRALITE)} qui ne ferait aucun perdant "
+            f"supposerait une contribution de "
+            f"{pourcent(ch.boucler(ch.SOCLE_NEUTRALITE).taux)} : il est "
+            "<strong>hors d'atteinte</strong> tant que le barème de l'impôt sur "
+            "le revenu reste ce qu'il est. Protéger davantage le bas du barème "
+            "suppose désormais d'en réformer le haut, ce qui est un autre "
+            "chapitre du programme. "
+            '<a href="cas-types.html">Voir qui perd, et de combien</a></p>',
+            "vigilance")
         + "<p>Deux points demandent encore un calibrage, et il vaut mieux les "
         "nommer : les revenus du capital soumis au barème sur option, dont le "
         "cumul dépasse le seuil même avec la déductibilité, et la contribution "
@@ -2300,48 +2334,46 @@ def financement():
     )
 
     retraites = (
-        "<p>La seconde conséquence est politique avant d'être fiscale, et elle "
-        "porte sur dix-sept millions de personnes qui votent.</p>"
-        "<p>L'assiette de la contribution est large : elle comprend les "
-        "pensions de retraite, comme celle de la CSG. Or la note prévoit que le "
-        "socle senior remplace l'ASPA et que <strong>aucune pension n'augmente "
-        "du fait de la réforme</strong> (§15). Si le troisième étage reste "
-        "différentiel, un retraité paie la contribution et ne reçoit rien : il "
-        f"perd {pourcent(b.taux)} de sa pension, sans contrepartie.</p>"
-        + g.tableau(
-            ["Option", "Ce qu'elle produit", "Ce qu'elle coûte"],
-            [["Socle senior <strong>différentiel</strong>, au niveau de l'ASPA",
-              f"Chaque retraité perd {pourcent(b.taux)} de sa pension sans rien "
-              "recevoir. Les bénéficiaires du minimum vieillesse sont protégés, "
-              "les autres non.",
-              "Rien de plus que les " + md(ch.ASPA_COUT) + " de l'ASPA — et "
-              "une campagne perdue chez les retraités."],
-             ["Socle senior <strong>servi à tous</strong>",
-              "Chaque retraité reçoit le socle et paie la contribution. Il "
-              f"gagne au change en dessous de {eur(ch.pension_de_bascule())} de "
-              "pension mensuelle, c'est-à-dire dans la très grande majorité des "
-              "cas.",
-              md(ch.etages_seniors()[1].cout_net) + " de coût net "
-              "supplémentaire. C'est le prix de la cohérence."],
-             ["<strong>Exonérer les pensions</strong> de la contribution",
-              "Les retraités ne paient rien et ne reçoivent rien : le statu quo "
-              "pour eux, l'effort pour les seuls actifs.",
-              f"Le taux passe de {pourcent(b.taux)} à "
-              f"{pourcent(ch.taux_hors_pensions())} sur une assiette rétrécie "
-              "d'un cinquième."]],
-            ["texte long", "texte long", "texte long"],
-            "Les trois façons de traiter les retraités, et leur prix")
+        "<p>La seconde conséquence de ce choix portait sur dix-sept millions de "
+        "personnes, et elle appelait une décision. <strong>Elle est prise : le "
+        "socle senior est servi à tous.</strong></p>"
+        + g.encadre('<p class="chapeau" style="margin:0">Le troisième étage '
+                    "n'est pas un minimum vieillesse rebaptisé. C'est le même "
+                    "socle, versé aux mêmes conditions, à chaque personne âgée "
+                    "qui réside en France.</p>")
+        + "<p>Sans cette décision, la réforme devenait intenable : l'assiette de "
+        "la contribution comprend les pensions, comme celle de la CSG. Un "
+        "troisième étage différentiel aurait fait payer "
+        f"{pourcent(b.taux)} de sa pension à chaque retraité en ne lui donnant "
+        "rien.</p>"
+        + g.engagements([
+            (md(ch.cout_senior()), "Ce que coûte le troisième étage",
+             "En coût net, une fois l'ASPA absorbée. C'est le prix de la "
+             "cohérence avec l'architecture à trois étages de la note."),
+            (eur(b.bascule_mensuelle), "La pension de bascule",
+             "En dessous, un retraité reçoit plus qu'il ne verse. La pension "
+             f"médiane est de {eur(ch.PENSION_MEDIANE)} : la très grande "
+             "majorité des retraités y gagne."),
+        ])
+        + "<p>La note pose que <strong>aucune pension n'augmente du fait de la "
+        "réforme</strong> (§15), et cela reste vrai : ce n'est pas la pension "
+        "qui change, c'est le socle qui s'y ajoute. Les deux affirmations "
+        "tiennent ensemble, et il faut les dire ensemble.</p>"
         + g.note(
-            "<p>La deuxième option est la seule qui soit cohérente avec "
-            "l'architecture à trois étages que la note pose au §3, et la seule "
-            "qui fasse disparaître du même coup le cas type du retraité au "
-            "minimum vieillesse. Elle est aussi la plus chère. "
-            "<strong>Ce choix n'est pas tranché ici : il appelle la même "
-            "décision explicite que celle qui vient d'être prise sur "
-            'l\'impôt.</strong> <a href="#trous">Voir le montant qui '
-            "manque</a></p>", "vigilance")
+            "<p><strong>Un corollaire reste à écrire, et il est bon marché.</strong> "
+            "Servir le socle à tous ne met pas à l'abri les bénéficiaires du "
+            f"minimum vieillesse : l'ASPA vaut {eur(ch.ASPA_PERSONNE_SEULE)}, "
+            f"le socle {eur(ch.SOCLE_CIBLE)}. Il leur faut le traitement que la "
+            "note réserve déjà au handicap (§10) — un <strong>complément "
+            "vieillesse</strong> versé en plus du socle, calibré pour que "
+            f"personne ne perde. Coût : {md(ch.cout_complement_vieillesse())}, "
+            "et le dernier cas type perdant chez les retraités disparaît. "
+            '<a href="cas-types.html">Voir les cas types</a></p>', "vigilance")
         + g.source("Note de doctrine, §3 — l'architecture à trois étages ; "
-                   "§15 — aucune hausse générale des pensions.")
+                   "§15 — aucune hausse générale des pensions ; §10 — le "
+                   "complément handicap, dont le complément vieillesse serait "
+                   "le décalque. La décision de servir le socle senior à tous "
+                   "est une décision du parti.")
     )
 
     return page(
@@ -2359,7 +2391,7 @@ def financement():
         [("net", "Du coût brut au coût net", net),
          ("taux", "Le taux, et le point de bascule", taux),
          ("arbitrage", "Ce que coûte chaque niveau de socle", arbitrage),
-         ("trous", "Les deux montants qui manquent", trous),
+         ("trous", "Le montant qui manque encore", trous),
          ("exclus", "Ce que ce bouclage refuse de compter", exclus),
          ("contribution", "La contribution de solidarité", contribution),
          ("ajout", "La contribution s'ajoute à l'impôt", ajout),
@@ -2653,12 +2685,12 @@ def questions():
                        "absorbée. La note, elle, s'arrête au coût brut."),
               identifiant="q-cout"),
         g.cle("Qui y perd ?",
-              "Trois situations, et le site les chiffre plutôt que de les laisser "
+              "Quatre situations, et le site les chiffre plutôt que de les laisser "
               "découvrir : le célibataire sans emploi aujourd'hui au RSA et à l'aide "
-              "au logement, la famille monoparentale modeste, et le retraité au "
-              "minimum vieillesse si le socle senior n'est pas calibré à son niveau. "
-              "Les deux dernières se ferment par une décision ; la première est "
-              "l'arbitrage central du programme.",
+              "au logement, la famille monoparentale modeste, le bénéficiaire du "
+              "minimum vieillesse tant qu'un complément vieillesse n'est pas écrit, "
+              "et le salarié au SMIC, dont la perte vient du taux de contribution "
+              "qu'appelle le financement des deux étages.",
               '<p class="actions"><a class="bouton" href="cas-types.html">Voir les '
               f"{en_lettres(len(ch.cas_types()))} situations</a></p>",
               g.repere("Sept cas types calculés aux barèmes 2026, perdants compris."),

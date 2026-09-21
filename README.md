@@ -50,18 +50,28 @@ un paragraphe :
 
 ## Ce que le parti a tranché
 
-La note laissait trois montants et une question ouverts, et la question était la
-plus lourde : la contribution de solidarité **remplace-t-elle** l'impôt sur le
-revenu, ou s'y **ajoute-t-elle** ? Les deux lectures sortaient du même texte et
-ne décrivaient pas le même programme.
+La note laissait trois montants ouverts et une question. Deux réponses sont
+désormais écrites, et elles sont liées.
 
-**Elle s'y ajoute.** Le barème de l'impôt sur le revenu reste ce qu'il est.
+**1. La contribution s'ajoute à l'impôt sur le revenu**, elle ne le remplace
+pas. Le barème reste ce qu'il est. C'est ce qui empêche la réforme de devenir un
+allègement d'impôt pour le dernier décile.
 
-C'est une décision du parti, pas une lecture de la note, et le site la signale
-comme telle partout où elle apparaît. Elle est portée par `financement.html`
-avec ses deux conséquences chiffrées : le taux marginal au sommet du barème —
-qui impose que la contribution soit **déductible**, sans quoi le total franchit
-le seuil des deux tiers — et le sort des retraités, qui reste à trancher.
+**2. Le socle senior est servi à tous**, au même montant que le socle adulte.
+C'est la lecture cohérente avec l'architecture à trois étages du §3, et la seule
+tenable une fois la première décision prise : l'assiette comprend les pensions,
+et un retraité qui paie sans rien recevoir n'était pas défendable.
+
+Ensemble, elles portent la contribution de 13 % à **19 %** et produisent une
+contrainte que personne n'avait vue : le prélèvement marginal au sommet du
+barème atteint **66.0 %**, contre un seuil de censure de
+66.7 %. D'où deux conséquences écrites dans
+`financement.html` — la contribution **doit être déductible** de l'assiette de
+l'impôt, et le socle est **plafonné à 589 €** par mois tant que
+le barème ne bouge pas.
+
+Ces décisions sont celles du parti, pas des lectures de la note, et le site les
+signale comme telles partout où elles apparaissent.
 
 Ni le chiffrage ni le droit n'engagent le parti, et ils n'ont pas le même statut
 l'un que l'autre : **le chiffrage dit ce que la note coûterait, le droit dit ce
@@ -84,12 +94,12 @@ n'existe qu'une fois, dans `construire_site.py`.
 | `index.html` | Le diagnostic, la règle, les trois étages, les dix principes | §1, §2, §3, §22 |
 | `revenu-universel.html` | Le socle adulte : montant, individualisation, travail gagnant, prestations absorbées, **l'outre-mer** et **la règle d'indexation** | §4, §5, §6, §12, §17 + chiffrage et droit |
 | `simulateur.html` | Le calculateur d'illustration, et la comparaison au système actuel | §5, §18 |
-| `cas-types.html` | Huit situations chiffrées, avant et après, **perdants compris**, Mayotte incluse | chiffrage |
+| `cas-types.html` | 9 situations chiffrées, avant et après, **perdants compris**, Mayotte et pension médiane incluses | chiffrage |
 | `jeunes.html` | Le socle dès 18 ans, les APL étudiantes, les bourses | §6, §13, §20.3 |
 | `familles.html` | Le crédit familial, le bouclier monoparental, le couple | §7, §8, §9, §11 |
 | `protections.html` | Handicap, logement, chômage, retraites : ce qui reste à part | §10, §12, §14, §15 |
 | `nouveaux-residents.html` | La convergence, **les sept publics auxquels le droit interdit de l'appliquer**, la jurisprudence, le périmètre réel, et **un contrôle sans fichier nouveau** | §16, §17, §20.5 + droit applicable |
-| `financement.html` | Coût brut, **coût net**, taux de contribution, point de bascule, **la contribution s'ajoute à l'impôt** et ce que ça coûte au sommet du barème | §18, §20.1 + chiffrage et droit |
+| `financement.html` | Coût brut, **coût net** des deux étages, taux, point de bascule, **les deux décisions du parti** et le plafond constitutionnel qu'elles imposent | §18, §20.1 + chiffrage et droit |
 | `calendrier.html` | Les cinq années de bascule et les six points de vigilance | §19, §20 |
 | `questions.html` | 15 objections, le message politique, le glossaire | §21, §22 + chiffrage |
 
@@ -131,7 +141,7 @@ python3 scripts/verifier.py          # pages, liens, ancres, barèmes, chiffrage
   **fermé** : une classe absente de `moteur/style.css` ne sera pas mise en page.
 - `scripts/construire_site.py` — le texte du programme, page par page. C'est le
   seul endroit où une phrase du site existe.
-- `scripts/chiffrage.py` — les barèmes 2026, le bouclage budgétaire, les 8
+- `scripts/chiffrage.py` — les barèmes 2026, le bouclage budgétaire, les 9
   cas-types, l'outre-mer et les projections d'indexation. Le seul endroit où un
   **nombre calculé** du site existe.
 - `scripts/verifier.py` — refuse une page qui a dérivé de son générateur, un
