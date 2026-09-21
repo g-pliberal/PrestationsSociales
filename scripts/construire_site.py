@@ -1322,9 +1322,11 @@ def familles():
         + g.note(
             "<p><strong>À euro dépensé, le forfait enfant est environ quatre "
             "fois plus efficace que le socle</strong> pour réduire les pertes, "
-            "parce qu'il se concentre sur treize millions huit cent mille "
-            "enfants là où le socle se répartit sur cinquante-cinq millions de "
-            "personnes. C'est ce qui justifie de lui attribuer une part de "
+            f"parce qu'il se concentre sur {ch.ENFANTS / 1e6:.1f} millions "
+            "d'enfants là où le socle se répartit sur "
+            f"{(ch.POPULATION_18_64 + ch.POPULATION_65_PLUS) / 1e6:.1f} "
+            "millions de personnes. C'est ce qui justifie de lui attribuer "
+            "une part de "
             "l'enveloppe très supérieure à son poids dans la population. Ce "
             "n'est pas ce qui justifierait de lui donner tout : le salarié au "
             "SMIC sans enfant paierait alors le taux plus élevé sans rien "
@@ -1511,8 +1513,10 @@ def protections():
             "<strong>Il est différentiel</strong> — il porte les ressources "
             f"jusqu'à {eur(ch.ASPA_PERSONNE_SEULE)}, et pas au-delà. C'est la "
             "mécanique de l'ASPA qu'il remplace, et la seule qui soit "
-            "finançable : un complément forfaitaire versé à tous les retraités "
-            "coûterait plus de quatre-vingts milliards.",
+            "finançable : un complément forfaitaire du même montant versé à "
+            "tous les retraités coûterait "
+            + md(ch.cout_brut(ch.ASPA_PERSONNE_SEULE - ch.SOCLE_RETENU,
+                              ch.POPULATION_65_PLUS) / ch.MILLIARD) + ".",
             "<strong>Il ne concerne qu'une minorité</strong> — le socle de "
             f"{eur(ch.SOCLE_RETENU)} couvre à lui seul la plus grande partie de "
             "ce que l'ASPA versait. Ne reste à payer que ce qui dépasse.",
@@ -2128,7 +2132,8 @@ def financement():
         [f"<strong>Socle adulte</strong> — {ch.SOCLE_RETENU} € × 12 × 40 millions",
          f"<strong>{md(adulte.brut)}</strong>",
          "Les 18-64 ans, selon l'hypothèse de population de la note (§4)."],
-        [f"<strong>Socle senior</strong> — {ch.SOCLE_RETENU} € × 12 × 14,7 millions",
+        [f"<strong>Socle senior</strong> — {ch.SOCLE_RETENU} € × 12 × "
+         f"{ch.POPULATION_65_PLUS / 1e6:.1f} millions",
          f"<strong>{md(ch.cout_brut(ch.SOCLE_RETENU, ch.POPULATION_65_PLUS) / ch.MILLIARD)}</strong>",
          "Le troisième étage, servi à tous. La note le pose (§3) sans le "
          'chiffrer. <a href="#retraites">Voir la décision</a>'],
@@ -2171,12 +2176,31 @@ def financement():
                    "population de la note elle-même (§4).")
     )
 
+    bas_assiette, haut_assiette = ch.assiette_fourchette()
     taux = (
         f"<p>Financer {md(b.net)} suppose une assiette. La seule assiette large "
-        "déjà en place est celle de la CSG : elle rapporte "
-        f"{md(ch.CSG_RENDEMENT)} à un taux moyen d'environ "
-        f"{pourcent(ch.CSG_TAUX_MOYEN)}, elle est donc de l'ordre de "
-        f"{md(ch.ASSIETTE_LARGE)}. Le rapport donne le taux :</p>"
+        "déjà en place est celle de la CSG, et elle se reconstruit composant "
+        "par composant : chacun se déduit de son rendement publié et de son "
+        "taux.</p>"
+        + g.tableau(
+            ["Composant de l'assiette", "Ce que la CSG en tire", "À quel taux",
+             "Assiette correspondante"],
+            [[nom.capitalize(), md(rendement), pourcent_precis(taux_csg),
+              md(rendement / taux_csg)]
+             for nom, (rendement, taux_csg) in ch.CSG_RENDEMENTS.items()]
+            + [["<strong>Total</strong>", f"<strong>{md(ch.CSG_RENDEMENT)}</strong>",
+                "", f"<strong>{md(ch.ASSIETTE_LARGE)}</strong>"]],
+            ["texte", "nombre", "nombre", "nombre"],
+            "L'assiette de la contribution, reconstruite par composants")
+        + g.note(
+            "<p>Les deux premiers composants sont exacts : un rendement publié "
+            "divisé par un taux unique. Le troisième ne l'est pas — les revenus "
+            "de remplacement portent des taux étagés, de 8,3 % sur les pensions "
+            "à 6,2 % sur le chômage — et le taux moyen retenu est un choix. "
+            "C'est la seule approximation du chiffrage, elle place l'assiette "
+            f"entre {md(bas_assiette)} et {md(haut_assiette)}, et "
+            '<a href="#robustesse">la calibration a été choisie pour y '
+            "résister</a>.</p>")
         + g.tableau(
             ["Ce qu'il faut financer", "Assiette", "Contribution de solidarité"],
             [[md(b.net), md(ch.ASSIETTE_LARGE),
@@ -2195,9 +2219,10 @@ def financement():
              "En dessous de ce revenu mensuel, on reçoit plus qu'on ne verse. "
              "C'est le cas de l'écrasante majorité des actifs."),
         ])
-        + g.repere("Rendement et taux moyen de la CSG, 2025. L'assiette en est "
-                   "déduite, et le taux est le rapport du coût net à cette "
-                   "assiette.")
+        + g.repere("Rendements de la CSG par catégorie, 2025 ; taux "
+                   "statutaires 2026. L'assiette de chaque composant en est "
+                   "déduite, et le taux de la contribution est le rapport du "
+                   "coût net à leur somme.")
     )
 
     arbitrage = (
@@ -2441,11 +2466,14 @@ def financement():
             ["texte long", "nombre", "texte"],
             "Le taux marginal au sommet du barème, revenus d'activité")
         + "<p>Le Conseil constitutionnel a censuré, dans sa décision "
-        "2012-662 DC, des taux marginaux de 75 % qu'il a jugés confiscatoires "
-        "au regard de l'égalité devant les charges publiques. Le Conseil d'État "
-        "en a tiré une règle simple : <strong>deux tiers, quelle que soit la "
-        "source du revenu</strong>, est le seuil au-delà duquel une mesure "
-        "fiscale risque la censure.</p>"
+        "2012-662 DC du 29 décembre 2012, des taux marginaux de 75 % qu'il a "
+        "jugés confiscatoires au regard de l'égalité devant les charges "
+        "publiques. Par un <strong>avis du 21 mars 2013</strong>, le Conseil "
+        "d'État en a tiré une règle simple : <strong>deux tiers, quelle que "
+        "soit la source du revenu</strong>, est le seuil au-delà duquel une "
+        "mesure fiscale risque la censure. C'est la règle de travail des "
+        'gouvernements depuis, et <a href="#robustesse">celle que ce chiffrage '
+        "retient</a>.</p>"
         + g.note(
             "<p><strong>D'où une condition, et elle n'est pas négociable : la "
             "contribution de solidarité doit être déductible de l'assiette de "
@@ -2490,18 +2518,24 @@ def financement():
         "cumul dépasse le seuil même avec la déductibilité, et la contribution "
         "exceptionnelle sur les hauts revenus, dont l'articulation avec la "
         "contribution de solidarité doit être écrite.</p>"
-        + g.droit("Décision n° 2012-662 DC du 29 décembre 2012 ; synthèse du "
-                  "Conseil d'État sur le seuil des deux tiers.")
-        + g.repere("Taux marginal calculé au sommet du barème sur les revenus "
-                   "d'activité, CSG et CRDS comprises, contribution "
-                   "exceptionnelle sur les hauts revenus comprise. Ordre de "
-                   "grandeur : l'abattement de 10 % est plafonné et le calcul "
-                   "exact dépend du foyer.")
+        + g.droit("Décision n° 2012-662 DC du 29 décembre 2012 ; avis du "
+                  "Conseil d'État du 21 mars 2013, qui en tire la règle des "
+                  "deux tiers. "
+                  '<a href="#robustesse">Ce que ce seuil vaut exactement</a>')
+        + g.repere("Taux marginal au sommet du barème sur les revenus "
+                   "d'activité : impôt sur le revenu à 45 %, CSG et CRDS à "
+                   "9,7 % dont 6,8 % déductibles, contribution exceptionnelle "
+                   "sur les hauts revenus à 4 %. L'abattement de 10 % étant "
+                   "plafonné, il ne joue pas au sommet. La contribution "
+                   "différentielle sur les hauts revenus n'y figure pas : "
+                   "c'est un plancher de taux moyen, qui ne joue pas sur un "
+                   "revenu d'activité déjà imposé au-delà.")
     )
 
     retraites = (
-        "<p>La seconde conséquence de ce choix portait sur dix-sept millions de "
-        "personnes, et elle appelait une décision. <strong>Elle est prise : le "
+        f"<p>La seconde conséquence de ce choix portait sur les "
+        f"{ch.POPULATION_65_PLUS / 1e6:.1f} millions de personnes de 65 ans ou "
+        "plus, et elle appelait une décision. <strong>Elle est prise : le "
         "socle senior est servi à tous.</strong></p>"
         + g.encadre('<p class="chapeau" style="margin:0">Le troisième étage '
                     "n'est pas un minimum vieillesse rebaptisé. C'est le même "
@@ -2567,6 +2601,57 @@ def financement():
                 eur(cas[INDICE_SMICARD].ecart),
                 commentaire]
 
+    robustesse = (
+        "<p>Un chiffrage qui ne dit pas son incertitude ne se vérifie pas. "
+        "Celui-ci en a une, et une seule : le taux moyen retenu sur les revenus "
+        "de remplacement. Les deux autres composants de l'assiette sont exacts. "
+        "Cette incertitude vaut d'être mesurée, parce que <strong>c'est elle "
+        "qui a départagé la calibration retenue de la suivante</strong>.</p>"
+        + g.tableau(
+            ["Calibration", "Prélèvement marginal, assiette large",
+             "Assiette étroite", "Tient sous le seuil"],
+            [[f"{eur(socle)} / {eur(forfait)}"
+              + (' <span class="badge proposition">retenu</span>'
+                 if (socle, forfait) == (ch.SOCLE_RETENU, ch.FORFAIT_RETENU)
+                 else ""),
+              pourcent_fin(ch.marginal_fourchette(socle, forfait)[0]),
+              pourcent_fin(ch.marginal_fourchette(socle, forfait)[1]),
+              ('<span class="badge proposition">oui</span>'
+               if ch.tient_sous_le_seuil(socle, forfait)
+               else '<span class="badge">non</span>')]
+             for socle, forfait in [(ch.SOCLE_CIBLE, ch.FORFAIT_NEUTRE_BUDGET),
+                                    (ch.SOCLE_RETENU, ch.FORFAIT_RETENU),
+                                    (580, 340), (585, 345)]],
+            ["texte", "nombre", "nombre", "texte"],
+            "Le prélèvement marginal aux deux bornes de l'assiette, "
+            f"seuil à {pourcent_fin(ch.SEUIL_CONFISCATOIRE)}")
+        + "<p>La lecture est sans ambiguïté. <strong>La calibration retenue est "
+        "la dernière qui reste sous le seuil même dans l'hypothèse la plus "
+        "défavorable.</strong> La suivante n'y résiste pas : elle tient sur "
+        "l'assiette centrale et la franchit sur l'assiette étroite. Ce n'est "
+        "donc pas un arbitrage de préférence, c'est une frontière.</p>"
+        + g.note(
+            "<p>Deux choses tempèrent ce seuil, et il vaut mieux les connaître "
+            "que les découvrir. D'abord, il est <strong>prudentiel</strong> : "
+            "dans la décision même dont il est tiré, le Conseil constitutionnel "
+            f"a ramené le taux marginal des retraites chapeau à "
+            f"{pourcent_fin(ch.TAUX_ADMIS_2012)} — qui a donc survécu, "
+            "au-dessus des deux tiers. Ensuite, la contribution différentielle "
+            "sur les hauts revenus, créée depuis, garantit une imposition "
+            f"moyenne minimale de {pourcent(ch.CDHR_TAUX_PLANCHER)} aux plus "
+            "hauts revenus : c'est un plancher de taux moyen, pas un plafond de "
+            "taux marginal, et il ne modifie pas ce calcul. Le chiffrage s'en "
+            "tient malgré tout aux deux tiers, parce qu'une réforme de cette "
+            "ampleur ne se calibre pas sur l'exception.</p>")
+        + g.droit("Avis du Conseil d'État du 21 mars 2013, synthétisant la "
+                  "décision n° 2012-662 DC du 29 décembre 2012 ; contribution "
+                  "différentielle sur les hauts revenus, article 10 de la loi "
+                  "de finances pour 2025.")
+        + g.repere("Fourchette obtenue en faisant varier le seul taux approché "
+                   "du chiffrage — celui des revenus de remplacement — entre "
+                   "ses deux bornes statutaires, 6,2 % et 8,3 %.")
+    )
+
     enveloppe = (
         "<p>Le niveau du socle et le forfait enfant étaient les deux dernières "
         "questions ouvertes. Le plafond les a refermées sur une même enveloppe, "
@@ -2595,7 +2680,10 @@ def financement():
                     "permettre."),
              _ligne(*RETENU, "<strong>Retenu</strong>",
                     "<strong>Les trois perdants progressent, aucun n'est "
-                    "sacrifié, et il reste de la marge sous le plafond.</strong>"),
+                    "sacrifié, et c'est la dernière calibration qui reste sous "
+                    "le seuil même dans l'hypothèse d'assiette la plus "
+                    'défavorable.</strong> <a href="#robustesse">Voir le '
+                    "test</a>"),
              _ligne(ch.SOCLE_PLAFOND, 335, "Épuiser l'enveloppe",
                     "Meilleur sur le papier, mais franchit le seuil.")],
             ["texte", "texte", "nombre", "nombre", "nombre", "nombre",
@@ -2659,6 +2747,8 @@ def financement():
          ("marginal", "Ce que ça fait au sommet du barème", marginal),
          ("retraites", "Ce que ça fait aux retraités", retraites),
          ("enveloppe", "L'arbitrage : où va l'enveloppe", enveloppe),
+         ("robustesse", "Ce que le chiffrage ne sait pas, et de combien",
+          robustesse),
          ("progressivite", "D'où vient la progressivité", progressivite)],
         tete=reperes)
 

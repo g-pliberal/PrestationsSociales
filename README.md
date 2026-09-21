@@ -93,6 +93,13 @@ monoparentale, mais au prix du salarié au SMIC — qui aurait payé le taux plu
 élevé sans rien recevoir. Pour un programme dont la promesse centrale est que le
 travail paie toujours, c'est le seul arbitrage vraiment interdit.
 
+Et ce n'est pas qu'une préférence : **la calibration retenue est la dernière qui
+reste sous le seuil de censure dans l'hypothèse d'assiette la plus
+défavorable.** Le prélèvement marginal au sommet du barème y tient entre
+65.85 % et 66.54 %, contre un seuil de
+66.67 % ; la calibration immédiatement supérieure
+le franchit. `financement.html` publie ce test.
+
 La note donne une fourchette de 500 à 600 € (§4) et une cible de
 550 € ; `SOCLE_CIBLE` et `SOCLE_RETENU` sont deux constantes
 distinctes dans `chiffrage.py`, parce que l'une est de la doctrine et l'autre une
@@ -166,7 +173,8 @@ python3 scripts/verifier.py          # pages, liens, ancres, barèmes, chiffrage
   **fermé** : une classe absente de `moteur/style.css` ne sera pas mise en page.
 - `scripts/construire_site.py` — le texte du programme, page par page. C'est le
   seul endroit où une phrase du site existe.
-- `scripts/chiffrage.py` — les barèmes 2026, le bouclage budgétaire, les 9
+- `scripts/chiffrage.py` — les barèmes 2026, le bouclage budgétaire, l'assiette
+  reconstruite par composants avec sa fourchette d'incertitude, les 9
   cas-types, l'outre-mer et les projections d'indexation. Le seul endroit où un
   **nombre calculé** du site existe.
 - `scripts/verifier.py` — refuse une page qui a dérivé de son générateur, un

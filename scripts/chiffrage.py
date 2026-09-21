@@ -146,9 +146,16 @@ def rsa_foyer(personnes: int) -> float:
 
 # -- 2. le périmètre et le coût brut -----------------------------------------
 
-POPULATION_18_64 = 40_000_000    # l'hypothèse de la note elle-même (§4)
-POPULATION_65_PLUS = 14_700_000  # pour le troisième étage, que la note ne chiffre pas
-ENFANTS = 13_800_000             # enfants à charge, ordre de grandeur
+#: La France compte 69,1 millions d'habitants au 1ᵉʳ janvier 2026, dont 22 %
+#: de 65 ans ou plus et environ 14,5 millions de moins de 18 ans. Les 18-64 ans
+#: en découlent par différence : 39,4 millions.
+#:
+#: LA NOTE RETIENT 40 MILLIONS (§4), et le chiffrage le conserve : l'écart joue
+#: contre le programme, puisqu'il surestime le coût du socle adulte. Garder
+#: l'hypothèse de la note est plus défendable que l'affiner à notre avantage.
+POPULATION_18_64 = 40_000_000
+POPULATION_65_PLUS = 15_200_000  # 22 % de 69,1 millions
+ENFANTS = 14_500_000             # moins de 18 ans
 
 SOCLE_CIBLE = 550                # € / mois, cible de régime stabilisé (note, §4)
 SOCLE_MARCHE = 500               # € / mois, première marche (note, §20.1)
@@ -233,13 +240,31 @@ EXCLUS_DU_BOUCLAGE = [
      "erreur de raisonnement, et elle est corrigée ici."),
 ]
 
-#: L'assiette de la contribution. La CSG rapporte 157 Md€ à un taux moyen
-#: d'environ 9,2 % : son assiette est donc de l'ordre de 1 700 Md€. C'est la
-#: seule assiette large déjà en place, et donc la seule référence honnête pour
-#: convertir un coût net en points de prélèvement.
-CSG_RENDEMENT = 157.0
-CSG_TAUX_MOYEN = 0.092
-ASSIETTE_LARGE = CSG_RENDEMENT / CSG_TAUX_MOYEN   # ≈ 1 707 Md€
+#: L'assiette de la contribution, RECONSTRUITE PAR COMPOSANTS.
+#:
+#: Une première version divisait le rendement total de la CSG par son taux sur
+#: les revenus d'activité — 157 / 9,2 % — et obtenait 1 707 Md€. C'était faux
+#: par construction : la CSG n'a pas un taux unique, et diviser par le plus
+#: élevé sous-estime l'assiette. L'erreur était de 3 %, soit un demi-point de
+#: contribution : du même ordre que toute l'enveloppe d'arbitrage.
+#:
+#: Chaque composant est donc déduit de SON rendement et de SON taux.
+CSG_RENDEMENTS = {
+    "activité": (110.67, 0.092),
+    "capital": (17.59, 0.092),
+    #: Les revenus de remplacement portent des taux étagés — 8,3 % sur les
+    #: pensions, 6,2 % sur le chômage, 3,8 % pour les foyers modestes, zéro en
+    #: dessous d'un seuil. Le taux moyen retenu est intermédiaire et assumé
+    #: comme tel : c'est le seul composant approché des trois.
+    "remplacement": (28.26, 0.078),
+}
+
+#: Les jeux sont écartés : leur assiette est la mise, pas un revenu, et un
+#: socle financé par un prélèvement sur les revenus n'a pas à s'y adosser.
+ASSIETTE_LARGE = sum(rendement / taux
+                     for rendement, taux in CSG_RENDEMENTS.values())
+
+CSG_RENDEMENT = sum(rendement for rendement, _ in CSG_RENDEMENTS.values())
 
 
 @dataclass(frozen=True)
@@ -676,11 +701,27 @@ CSG_CRDS_ACTIVITE = 0.097
 CSG_DEDUCTIBLE = 0.068
 ASSIETTE_CSG_ACTIVITE = 0.9825
 
-#: Le seuil au-delà duquel un prélèvement risque la censure. Le Conseil d'État
-#: a synthétisé la jurisprudence du Conseil constitutionnel — décision
-#: 2012-662 DC, qui a censuré des taux marginaux de 75 % — par une règle
-#: simple : DEUX TIERS, quelle que soit la source du revenu.
+#: Le seuil au-delà duquel un prélèvement risque la censure. Par un AVIS DU
+#: 21 MARS 2013, le Conseil d'État a synthétisé la jurisprudence du Conseil
+#: constitutionnel — décision 2012-662 DC du 29 décembre 2012 — par une règle
+#: simple : un taux marginal maximal de DEUX TIERS, quelle que soit la source
+#: du revenu, est le seuil au-delà duquel une mesure fiscale risque d'être
+#: jugée confiscatoire.
 SEUIL_CONFISCATOIRE = 2 / 3
+
+#: Le point de comparaison qu'il faut connaître avant de traiter les deux tiers
+#: comme une frontière absolue : dans cette même décision, le Conseil a ramené
+#: le taux marginal des retraites chapeau de 75 % à 68,34 % — et 68,34 % a donc
+#: survécu. Le seuil des deux tiers est une règle PRUDENTIELLE, plus stricte
+#: que ce que le juge a effectivement admis. Le chiffrage s'y tient quand même.
+TAUX_ADMIS_2012 = 0.6834
+
+#: La contribution différentielle sur les hauts revenus, créée par la loi de
+#: finances pour 2025, garantit une imposition moyenne minimale de 20 % aux
+#: foyers dont le revenu de référence dépasse 250 000 €. C'est un PLANCHER de
+#: taux moyen, pas un plafond de taux marginal : elle ne modifie pas le calcul
+#: ci-dessous, qui porte sur un revenu d'activité déjà imposé bien au-delà.
+CDHR_TAUX_PLANCHER = 0.20
 
 
 def taux_marginal_sommet(contribution: float | None = None,
@@ -1037,3 +1078,54 @@ def forfait_finance_par(marge_milliards: float,
     if forfait_mensuel is None:
         forfait_mensuel = FORFAIT_NEUTRE_BUDGET
     return forfait_mensuel + marge_milliards * MILLIARD / (ENFANTS * 12)
+
+
+# -- 12. ce que le chiffrage ne sait pas, et de combien -----------------------
+#
+# UN CHIFFRAGE QUI NE DIT PAS SON INCERTITUDE N'EST PAS VÉRIFIABLE. Celui-ci
+# repose sur une assiette dont un composant est approché : les revenus de
+# remplacement portent des taux étagés — 8,3 % sur les pensions, 6,2 % sur le
+# chômage, 3,8 % pour les foyers modestes —, et le taux moyen retenu est un
+# choix. Les deux autres composants sont exacts : rendement publié divisé par
+# un taux unique.
+#
+# La fourchette ci-dessous n'est donc pas une précaution de style. C'est elle
+# qui décide si la calibration retenue tient ou non, et elle donne un résultat
+# net : elle tient, et la calibration immédiatement supérieure ne tient pas.
+
+REMPLACEMENT_TAUX_EXTREMES = (0.062, 0.083)   # chômage, pensions
+
+
+def assiette_fourchette() -> tuple[float, float]:
+    """L'assiette large, aux deux bornes du taux de remplacement."""
+    fixe = sum(rendement / taux
+               for nom, (rendement, taux) in CSG_RENDEMENTS.items()
+               if nom != "remplacement")
+    rendement, _ = CSG_RENDEMENTS["remplacement"]
+    hautes, basses = REMPLACEMENT_TAUX_EXTREMES
+    return (fixe + rendement / basses, fixe + rendement / hautes)
+
+
+def marginal_fourchette(socle_mensuel: float = SOCLE_RETENU,
+                        forfait_mensuel: float | None = None
+                        ) -> tuple[float, float]:
+    """Le prélèvement marginal au sommet, aux deux bornes de l'assiette.
+
+    Le coût net ne dépend pas de l'assiette ; le taux, si. On recalcule donc le
+    taux sur chaque borne, et le marginal qui en découle.
+    """
+    net = boucler(socle_mensuel, forfait_mensuel).net
+    basse, haute = assiette_fourchette()
+    return (taux_marginal_sommet(net / haute),
+            taux_marginal_sommet(net / basse))
+
+
+def tient_sous_le_seuil(socle_mensuel: float = SOCLE_RETENU,
+                        forfait_mensuel: float | None = None) -> bool:
+    """La calibration reste-t-elle sous le seuil dans le cas le plus défavorable.
+
+    C'est le test qui a départagé la calibration retenue de la suivante : à
+    575 € et 330 €, le marginal reste sous les deux tiers même en prenant
+    l'assiette la plus étroite ; à 580 € et 340 €, il les franchit.
+    """
+    return marginal_fourchette(socle_mensuel, forfait_mensuel)[1] <= SEUIL_CONFISCATOIRE
