@@ -39,6 +39,7 @@ GROUPES_NAVIGATION = [
     ("Ce que ça change", [
         ("revenu-universel.html", "Socle"),
         ("simulateur.html", "Calculer"),
+        ("cas-types.html", "Cas types"),
         ("jeunes.html", "Jeunes"),
         ("familles.html", "Familles"),
         ("protections.html", "Protections"),
@@ -148,12 +149,17 @@ def pied() -> str:
   programme que le Parti libéral français soumet au débat. Pour vos droits
   actuels, seules les caisses font foi
   (<a href="https://www.service-public.fr/">service-public.fr</a>).</p>
-  <p>Tout le contenu est tiré de la note de doctrine du parti,
+  <p>Le programme est tiré de la note de doctrine du parti,
   <a href="{NOTE}">« Revenu universel et refonte des prestations sociales »</a>
   (22 sections, reproduite intégralement dans ce dépôt). Les montants qu'elle
   donne sont des <strong>ordres de grandeur de cadrage</strong> : le niveau du
   socle, le forfait enfant et le taux de la contribution de solidarité restent à
-  calibrer, et ce site le signale partout où il les emploie.</p>
+  calibrer, et ce site le signale partout où il les emploie. Les pages de
+  <a href="financement.html">financement</a> et de
+  <a href="cas-types.html">cas types</a> portent en plus un
+  <strong>chiffrage</strong> qui n'est pas dans la note : il est calculé à
+  partir des barèmes publics de 2026, il dit ses hypothèses, et il est signalé
+  comme tel à chaque fois.</p>
   <p>Code et textes sur <a href="{DEPOT}">GitHub</a>. L'apparence reprend celle du
   simulateur de retraite du parti, dont la feuille de style est copiée telle
   quelle. <span class="retour-site">Un site du
@@ -289,6 +295,21 @@ def gloses(entrees: list[tuple[str, str]]) -> str:
 def source(texte: str) -> str:
     """D'où vient ce qui précède, dans la note. Toute page en porte au moins une."""
     return f'<p class="discret">{texte}</p>'
+
+
+def repere(texte: str) -> str:
+    """D'où vient un CHIFFRE, hors de la note : barème, statistique, calcul.
+
+    Le site portait jusqu'ici une seule espèce de phrase — celles tirées de la
+    note, qui se citent « Note de doctrine, §n ». Le chiffrage en introduit une
+    seconde : le coût net, le taux de contribution et les cas-types ne sont pas
+    dans la note, ils sont calculés à partir de barèmes publics.
+
+    Les deux ne doivent jamais partager un paragraphe, sans quoi le lecteur ne
+    sait plus ce que le parti a écrit et ce que le site a calculé. D'où deux
+    marqueurs distincts, et celui-ci dit « calculé », pas « doctrine ».
+    """
+    return f'<p class="discret">Chiffrage — {texte}</p>'
 
 
 def plan(sections: list[tuple[str, str]]) -> str:

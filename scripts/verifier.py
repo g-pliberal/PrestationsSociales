@@ -71,15 +71,62 @@ def entites_echappees() -> list[str]:
     return fautes
 
 
+def baremes_servis() -> list[str]:
+    """Les barèmes servis au calculateur disent-ils encore ce que dit le module.
+
+    Le calculateur affiche une colonne « aujourd'hui », et il lui faut pour cela
+    les barèmes en vigueur. Ils ne sont pas écrits dans le JavaScript : ils sont
+    injectés dans la page depuis `chiffrage.py`, précisément pour qu'il n'en
+    existe qu'un seul jeu. Cette vérification garde la porte fermée — un barème
+    changé d'un côté et pas de l'autre ferait dire à la page et aux cas-types
+    deux chiffres différents de la même situation.
+    """
+    import json
+
+    import chiffrage as ch
+
+    html = (RACINE / "simulateur.html").read_text(encoding="utf-8")
+    trouve = re.search(
+        r'<script id="baremes" type="application/json">(.*?)</script>', html, re.S)
+    if not trouve:
+        return ["simulateur.html : les barèmes du calculateur sont absents"]
+    try:
+        servis = json.loads(trouve.group(1))
+    except json.JSONDecodeError as erreur:
+        return [f"simulateur.html : barèmes illisibles ({erreur})"]
+    if servis != json.loads(json.dumps(ch.baremes_du_calculateur())):
+        return ["simulateur.html : les barèmes servis ne sont plus ceux de "
+                "chiffrage.py"]
+    return []
+
+
+def chiffrage_signale() -> list[str]:
+    """Les pages qui publient un chiffrage le signalent-elles comme tel.
+
+    Le site porte deux espèces de phrases — la doctrine, tirée de la note, et le
+    chiffrage, calculé à partir de barèmes publics — et le lecteur doit pouvoir
+    les distinguer. Une page qui chiffre sans le dire ferait passer un calcul du
+    site pour une position du parti.
+    """
+    manquants = []
+    for fichier in ("financement.html", "cas-types.html"):
+        html = (RACINE / fichier).read_text(encoding="utf-8")
+        if "Chiffrage —" not in html:
+            manquants.append(f"{fichier} : publie un chiffrage sans le signaler")
+    return manquants
+
+
 def main() -> int:
-    problemes = pages_a_jour() + liens_valides() + entites_echappees()
+    problemes = (pages_a_jour() + liens_valides() + entites_echappees()
+                 + baremes_servis() + chiffrage_signale())
     if problemes:
         for probleme in problemes:
             print(f"✗ {probleme}")
         print(f"\n{len(problemes)} problème(s). "
               "Relancez `python3 scripts/construire_site.py` si les pages ont dérivé.")
         return 1
-    print(f"✓ {len(site.PAGES)} pages à jour, liens internes et ancres valides.")
+    print(f"✓ {len(site.PAGES)} pages à jour, liens internes et ancres valides, "
+          "barèmes du calculateur conformes, chiffrage signalé.")
     return 0
 
 
